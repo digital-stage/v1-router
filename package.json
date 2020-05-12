@@ -1,0 +1,59 @@
+{
+  "name": "digitalstage-router",
+  "version": "0.0.1",
+  "description": "Router microservice for Digital Stage Platform",
+  "main": "index.js",
+  "scripts": {
+    "dev": "NODE_ENV=development nodemon --watch './src/**/*.ts' --exec 'ts-node' ./src/index.ts",
+    "build": "tsc",
+    "start": "NODE_ENV=development tsc && node ./dist/index.js",
+    "test": "mocha -r ts-node/register src/test/test.ts",
+    "deploy-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production --force",
+    "reload-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production exec 'pm2 reload router'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/digital-stage/router.git"
+  },
+  "keywords": [
+    "mediasoup",
+    "router",
+    "digital",
+    "stage",
+    "art"
+  ],
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "firebase": "^7.14.3",
+    "firebase-admin": "^8.12.1",
+    "fs": "0.0.1-security",
+    "https": "^1.0.0",
+    "lodash.omit": "^4.5.0",
+    "node": "^14.2.0",
+    "mediasoup": "latest",
+    "public-ip": "latest"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.6",
+    "@types/express": "^4.17.6",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^13.13.5",
+    "@types/socket.io": "^2.1.4",
+    "chai": "^4.2.0",
+    "chai-http": "^4.3.0",
+    "mocha": "^7.1.2",
+    "nodemon": "^2.0.3",
+    "process": "^0.11.10",
+    "ts-node": "^8.10.1",
+    "tslint": "^6.1.2",
+    "typescript": "^3.8.3",
+    "chai-https": "latest"
+  },
+  "author": "tobias.hegemann@googlemail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/digital-stage/router/issues"
+  },
+  "homepage": "https://github.com/digital-stage/router#readme"
+}
