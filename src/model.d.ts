@@ -1,10 +1,10 @@
 export interface DatabaseRouter {
     ipv4: string,
     ipv6: string,
+    domain: string;
     port: number,
     slotAvailable: number
 }
-
 export interface DatabaseStage {
     id: string;
     name: string;

@@ -49,6 +49,7 @@ startServer().then(
         const serverPayload: DatabaseRouter = {
             ipv4: ipv4,
             ipv6: ipv6,
+            domain: os.hostname(),
             port: port,
             slotAvailable: cpuCount * connectionsPerCpu
         };
