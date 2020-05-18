@@ -34,7 +34,6 @@ const server = https.createServer({
     rejectUnauthorized: false
 }, app);
 
-
 const startServer = async () => {
     server.listen(port);
 };

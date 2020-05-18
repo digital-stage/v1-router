@@ -1,5 +1,5 @@
 module.exports = {
-    domain: "www.thepanicure.de",
+    domain: process.env.NODE_ENV === "production" ? "www.thepanicure.de" : "localhost",
     listenIp: "0.0.0.0",
     listenPort: 3020,
     sslCrt: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/www.thepanicure.de/fullchain.pem" : "./ssl/cert.pem",
