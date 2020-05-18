@@ -5,6 +5,7 @@ import * as https from "https";
 import * as fs from "fs";
 import * as publicIp from "public-ip";
 import mediasoup from "./mediasoup";
+import {DatabaseRouter} from "./model";
 
 const os = require('os');
 
@@ -44,18 +45,21 @@ startServer().then(
         // Register this server globally
         const ipv4: string = await publicIp.v4();
         const ipv6: string = await publicIp.v6();
-        const routerId: string = ipv4 + ":" + port;
         const cpuCount: number = os.cpus().length;
-        const serverPayload: DigitalStageRouter = {
+        const serverPayload: DatabaseRouter = {
             ipv4: ipv4,
             ipv6: ipv6,
             port: port,
             slotAvailable: cpuCount * connectionsPerCpu
         };
-        admin.firestore().collection("router").doc(routerId)
-            .set(serverPayload)
-            .then(() => {
-                app.use(mediasoup(routerId, ipv4, ipv6));
+        admin
+            .database()
+            .ref("routers")
+            .push()
+            .then((ref: admin.database.Reference) => ref.onDisconnect().remove().then(() => ref))
+            .then((ref: admin.database.Reference) => ref.set(serverPayload).then(() => ref))
+            .then((ref: admin.database.Reference) => {
+                app.use(mediasoup(ref, ipv4, ipv6));
                 console.log("Successfully published router capabilities!")
             })
             .catch((error) => console.error(error));
