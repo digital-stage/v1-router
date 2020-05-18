@@ -110,6 +110,7 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
             transports.webrtc[transport.id] = transport;
 
             return res.status(200).send(JSON.stringify({
+                id: transport.id,
                 iceParameters: transport.iceParameters,
                 iceCandidates: transport.iceCandidates,
                 dtlsParameters: transport.dtlsParameters,
@@ -141,6 +142,7 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
             transports.plain[transport.id] = transport;
 
             res.status(200).send(JSON.stringify({
+                id: transport.id,
                 sctpParameters: transport.sctpParameters,
                 appData: transport.appData
             }));
