@@ -5,8 +5,7 @@ export const getStageId = async (uid: string): Promise<string> => {
     return new Promise<string>(async (resolve, reject) => {
         return admin
             .database()
-            .ref("users")
-            .child(uid)
+            .ref("users/" + uid)
             .once("value")
             .then((snapshot: admin.database.DataSnapshot) => {
                 if (snapshot.exists()) {

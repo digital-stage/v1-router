@@ -1,7 +1,7 @@
-import {Router as ExpressRouter} from "express";
+import * as express from "express";
 import {Worker} from "mediasoup/lib/Worker";
 import * as mediasoup from "mediasoup";
-import {MediasoupGetUrls, MediasoupPostUrls} from "./events";
+import {RouterGetUrls, RouterPostUrls} from "./events";
 import * as os from "os";
 import {Router} from "mediasoup/lib/Router";
 import {WebRtcTransport} from "mediasoup/lib/WebRtcTransport";
@@ -11,7 +11,7 @@ import {Producer} from "mediasoup/lib/Producer";
 import * as omit from "lodash.omit";
 import * as admin from "firebase-admin";
 import {DatabaseProducer} from "./model";
-import {getGlobalProducer, getStageId} from "./util";
+import {getStageId} from "./util";
 import {Consumer} from "mediasoup/lib/Consumer";
 
 const debug = require('debug')('mediasoup');
@@ -38,12 +38,26 @@ const transports: {
     plain: {}
 };
 
-let producers: {
-    [globalProducerId: string]: Producer
+interface LocalProducer {
+    uid: string;
+    producer: Producer
+}
+
+interface LocalConsumer {
+    uid: string;
+    consumer: Consumer
+}
+
+let localProducers: {
+    [globalProducerId: string]: LocalProducer
 } = {};
 
-let consumers: {
-    [id: string]: Consumer
+let localConsumers: {
+    [localConsumerId: string]: LocalConsumer
+} = {};
+
+let forwardConsumers: {
+    [localConsumerId: string]: LocalConsumer
 } = {};
 
 
@@ -72,26 +86,43 @@ const getAvailableRouter = (): Router | null => {
     return null;
 };
 
-export default (ref: admin.database.Reference, ipv4: string, ipv6: string): ExpressRouter => {
+
+export default (ref: admin.database.Reference, ipv4: string, ipv6: string): express.Router => {
+    const routerId: string = ref.key;
     init();
 
-    const express = ExpressRouter();
+    const getGlobalProducer = (globalProducerId: string): Promise<DatabaseProducer> => {
+        return admin.database()
+            .ref("producers/" + globalProducerId)
+            .once("value")
+            .then((snapshot) => {
+                return snapshot.val() as DatabaseProducer;
+            });
+    }
 
-    express.get("/", (req, res, next) => {
+    const app = express.Router();
+    app.use(express.json());
+
+    app.get("/", (req, res, next) => {
         if (!initialized) {
             return res.status(501).send("Not ready yet");
         }
         res.status(200).send("Alive and kick'n with " + router.length + " cores !");
     });
 
-    express.get(MediasoupGetUrls.GetRTPCapabilities, (req, res, next) => {
+    app.get(RouterGetUrls.GetRTPCapabilities, (req, res, next) => {
+        debug(RouterGetUrls.GetRTPCapabilities);
         if (!initialized) {
             return res.status(501).send("Not ready yet");
         }
         res.status(200).send(router[0].router.rtpCapabilities);
     });
 
-    express.get(MediasoupGetUrls.CreateWebRTCTransport, (req, res, next) => {
+    /***
+     * /transport/webrtc
+     */
+    app.get(RouterGetUrls.CreateTransport, (req, res, next) => {
+        debug(RouterGetUrls.CreateTransport);
         if (!initialized) {
             return res.status(501).send("Not ready yet");
         }
@@ -123,9 +154,52 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
             }
         )
     });
+    app.post(RouterPostUrls.ConnectTransport, (req, res, next) => {
+        debug(RouterPostUrls.ConnectTransport);
+        if (!initialized) {
+            return res.status(503).send({error: "Not ready"});
+        }
+        const {transportId, dtlsParameters} = req.body;
+        if (!transportId || !dtlsParameters) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
+        const webRtcTransport: WebRtcTransport = transports.webrtc[transportId];
+        if (webRtcTransport) {
+            return webRtcTransport.connect({dtlsParameters: dtlsParameters}).then(
+                () => res.status(200).send()
+            ).catch((error) => {
+                debug(error);
+                return res.status(500).send({error: "Internal server error"});
+            });
+        }
+        return res.status(400).send("Not found");
+    });
+    app.post(RouterPostUrls.CloseTransport, (req, res, next) => {
+        debug(RouterPostUrls.CloseTransport);
+        if (!initialized) {
+            return res.status(503).send({error: "Not ready"});
+        }
+        const {transportId, dtlsParameters} = req.body;
+        if (!transportId || !dtlsParameters) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
+        const webRtcTransport: WebRtcTransport = transports.webrtc[transportId];
+        if (webRtcTransport) {
+            webRtcTransport.close();
+            transports.webrtc = omit(transports.webrtc, transportId);
+            return res.status(200).send();
+        }
+        return res.status(400).send("Not found");
+    });
 
 
-    express.get(MediasoupGetUrls.CreatePlainRTPTransport, (req, res, next) => {
+    /***
+     * /transport/plain
+     */
+    app.get(RouterGetUrls.CreatePlainTransport, (req, res, next) => {
+        debug(RouterGetUrls.CreatePlainTransport);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
@@ -133,15 +207,13 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
         if (!router) {
             return res.status(509).send("Full");
         }
-
         return router.createPlainTransport({
             listenIp: ipv6,
             rtcpMux: true,
             comedia: true
         }).then((transport: PlainTransport) => {
             transports.plain[transport.id] = transport;
-
-            res.status(200).send(JSON.stringify({
+            return res.status(200).send(JSON.stringify({
                 id: transport.id,
                 sctpParameters: transport.sctpParameters,
                 appData: transport.appData
@@ -151,55 +223,56 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
             return res.status(500).send({error: "Internal server error"});
         });
     });
-
-    express.post(MediasoupPostUrls.ConnectTransport, (req, res, next) => {
+    app.get(RouterPostUrls.ConnectPlainTransport, (req, res, next) => {
+        debug(RouterPostUrls.ConnectPlainTransport);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
-        const {transportId} = req.body;
-        if (!transportId) {
+        const {transportId, ip, port, rtcpPort, srtpParameters} = req.body;
+        if (!transportId || !ip || !port || !rtcpPort || !srtpParameters) {
+            debug("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
-        const webRtcTransport: WebRtcTransport = transports.webrtc[transportId];
-        if (webRtcTransport) {
-            const {dtlsParameters} = req.body;
-            if (!dtlsParameters) {
-                return res.status(400).send("Bad Request");
-            }
-            return webRtcTransport.connect({dtlsParameters: dtlsParameters}).then(
-                () => {
-                    res.status(200).send();
-                }
+        const plainTransport: PlainTransport = transports.plain[transportId];
+        if (plainTransport) {
+            return plainTransport.connect({
+                ip: ip,
+                port: port,
+                rtcpPort: rtcpPort,
+                srtpParameters: srtpParameters,
+            }).then(
+                () => res.status(200).send()
             ).catch((error) => {
                 debug(error);
                 return res.status(500).send({error: "Internal server error"});
             });
         }
-
+    });
+    app.post(RouterPostUrls.ClosePlainTransport, (req, res, next) => {
+        debug(RouterPostUrls.ClosePlainTransport);
+        if (!initialized) {
+            return res.status(503).send({error: "Not ready"});
+        }
+        const {transportId, dtlsParameters} = req.body;
+        if (!transportId || !dtlsParameters) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
         const plainTransport: PlainTransport = transports.plain[transportId];
         if (plainTransport) {
-            const {ip, port, rtcpPort, srtpParameters} = req.body;
-            if (!ip || !port || !rtcpPort || !srtpParameters) {
-                return res.status(400).send("Bad Request");
-            }
-            return plainTransport.connect({
-                ip: req.body.ip,
-                port: req.body.port,
-                rtcpPort: req.body.rtcpPort,
-                srtpParameters: req.body.srtpParameters,
-            }).then(
-                () => {
-                    res.status(200).send();
-                }
-            ).catch((error) => {
-                debug(error);
-                return res.status(500).send({error: "Internal server error"});
-            });
+            plainTransport.close();
+            transports.plain = omit(transports.plain, transportId);
+            return res.status(200).send();
         }
         return res.status(400).send("Not found");
     });
 
-    express.post(MediasoupPostUrls.SendTrack, (req, res) => {
+
+    /***
+     *
+     */
+    app.post(RouterPostUrls.CreateProducer, (req, res) => {
+        debug(RouterPostUrls.CreateProducer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
@@ -208,53 +281,151 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
         }
         const {transportId, kind, rtpParameters} = req.body;
         if (!transportId || !kind || !rtpParameters) {
+            debug("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
-        }
-        const transport: any = transports.webrtc[transportId] || transports.plain[transportId];
-        if (!transport) {
-            return res.status(404).send("Not found");
         }
         return admin.auth()
             .verifyIdToken(req.headers.authorization)
             .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
-                getStageId(decodedIdToken.uid)
-                    .then(async (stageId: string) => {
-                        const producer: Producer = await transport.produce({
-                            kind: kind,
-                            rtpParameters: rtpParameters
-                        });
-                        // Get global producer id
-                        const producerRef: admin.database.Reference = await admin.database()
-                            .ref("producers")
-                            .push();
-                        await producerRef.onDisconnect().remove();
-                        await producerRef.set({
-                            stageId: stageId,
-                            uid: decodedIdToken.uid,
-                            routerId: ref.key,
-                            kind: producer.kind
-                        } as DatabaseProducer);
-                        const globalProducerId: string = producerRef.key;
-                        producer.on("transportclose", () => {
-                            debug("producer's transport closed", producer.id);
-                            producerRef.remove().then(() => {
-                                producers = omit(producers, globalProducerId);
-                            })
-                        });
-                        producers[globalProducerId] = producer;
-                        return res.status(200).send({
-                            id: globalProducerId,
-                            localProducerId: producer.id
-                        });
+                const transport: any = transports.webrtc[transportId];
+                if (!transport) {
+                    return res.status(404).send("Transport not found");
+                }
+                const stageId: string = await getStageId(decodedIdToken.uid);
+                const producer: Producer = await transport.produce({
+                    kind: kind,
+                    rtpParameters: rtpParameters
+                });
+                // Get global producer id
+                const producerRef: admin.database.Reference = await admin.database()
+                    .ref("producers")
+                    .push();
+                await producerRef.onDisconnect().remove();
+                await producerRef.set({
+                    stageId: stageId,
+                    uid: decodedIdToken.uid,
+                    routerId: ref.key,
+                    kind: producer.kind
+                } as DatabaseProducer);
+                const globalProducerId: string = producerRef.key;
+                producer.on("transportclose", () => {
+                    debug("producer's transport closed", producer.id);
+                    producerRef.remove().then(() => {
+                        localProducers = omit(localProducers, globalProducerId);
                     })
+                });
+                localProducers[globalProducerId] = {
+                    uid: decodedIdToken.uid,
+                    producer: producer
+                };
+                return res.status(200).send({
+                    id: globalProducerId,
+                    localProducerId: producer.id
+                });
             })
             .catch((error) => {
                 debug(error);
-                return res.status(403).send({error: "Forbidden"});
+                return res.status(403).send({error: error});
+            })
+    });
+    app.post(RouterPostUrls.PauseProducer, (req, res) => {
+        debug(RouterPostUrls.CreateProducer);
+        if (!initialized) {
+            return res.status(503).send({error: "Not ready"});
+        }
+        if (!req.headers.authorization) {
+            return res.status(511).send({error: "Authentication Required"});
+        }
+        const {globalProducerId} = req.body;
+        if (!globalProducerId) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
+        return admin.auth()
+            .verifyIdToken(req.headers.authorization)
+            .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
+                const localProducer: LocalProducer = localProducers[globalProducerId];
+                if (localProducer) {
+                    if (localProducer.uid === decodedIdToken.uid) {
+                        return localProducer.producer.pause().then(() => res.status(200).send());
+                    }
+                    return res.status(403).send({error: "Forbidden"});
+                }
+                const globalProducer: DatabaseProducer = await getGlobalProducer(globalProducerId);
+                if (globalProducer.uid !== decodedIdToken.uid)
+                    return res.status(403).send({error: "Forbidden"});
+                // TODO: Use global producer to pause producer on target router
+
+                return res.status(404).send("Transport not found");
+            });
+    });
+    app.post(RouterPostUrls.ResumeProducer, (req, res) => {
+        debug(RouterPostUrls.ResumeProducer);
+        if (!initialized) {
+            return res.status(503).send({error: "Not ready"});
+        }
+        if (!req.headers.authorization) {
+            return res.status(511).send({error: "Authentication Required"});
+        }
+        const {globalProducerId} = req.body;
+        if (!globalProducerId) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
+        return admin.auth()
+            .verifyIdToken(req.headers.authorization)
+            .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
+                const localProducer: LocalProducer = localProducers[globalProducerId];
+                if (localProducer) {
+                    if (localProducer.uid === decodedIdToken.uid) {
+                        return localProducer.producer.resume().then(() => res.status(200).send());
+                    }
+                    return res.status(403).send({error: "Forbidden"});
+                }
+                const globalProducer: DatabaseProducer = await getGlobalProducer(globalProducerId);
+                if (globalProducer.uid !== decodedIdToken.uid)
+                    return res.status(403).send({error: "Forbidden"});
+                // TODO: Use global producer to resume producer on target router
+
+                return res.status(404).send("Producer not found");
+            });
+    });
+    app.post(RouterPostUrls.CloseProducer, (req, res) => {
+        debug(RouterPostUrls.CloseProducer);
+        if (!initialized) {
+            return res.status(503).send({error: "Not ready"});
+        }
+        if (!req.headers.authorization) {
+            return res.status(511).send({error: "Authentication Required"});
+        }
+        const {globalProducerId} = req.body;
+        if (!globalProducerId) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
+        return admin.auth()
+            .verifyIdToken(req.headers.authorization)
+            .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
+                const localProducer: LocalProducer = localProducers[globalProducerId];
+                if (localProducer) {
+                    if (localProducer.uid === decodedIdToken.uid) {
+                        localProducer.producer.close()
+                        return res.status(200).send();
+                    }
+                    return res.status(403).send({error: "Forbidden"});
+                }
+                const globalProducer: DatabaseProducer = await getGlobalProducer(globalProducerId);
+                if (globalProducer.uid !== decodedIdToken.uid)
+                    return res.status(403).send({error: "Forbidden"});
+                // TODO: Use global producer to close producer on target router
+
+                return res.status(404).send("Producer not found");
             });
     });
 
-    express.post(MediasoupPostUrls.ConsumeWebRTC, (req, res) => {
+
+    app.post(RouterPostUrls.CreateConsumer, (req, res) => {
+        debug(RouterPostUrls.CreateConsumer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
@@ -263,23 +434,26 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
         }
         const {transportId, globalProducerId, rtpCapabilities} = req.body;
         if (!transportId || !globalProducerId || !rtpCapabilities) {
+            debug("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         return admin.auth().verifyIdToken(req.headers.authorization)
-            .then(async () => {
-                const transport: WebRtcTransport = transports.webrtc[transportId];
-                if (!transport) {
-                    return res.status(400).send("Transport not found");
-                }
-                const producer: Producer = producers[globalProducerId];
-                if (producer) {
-                    // Is local
+            .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
+                const localProducer: LocalProducer = localProducers[globalProducerId];
+                if (localProducer) {
+                    const transport: WebRtcTransport = transports.webrtc[transportId];
+                    if (!transport) {
+                        return res.status(400).send("Transport not found");
+                    }
                     const consumer: Consumer = await transport.consume({
-                        producerId: producer.id,
+                        producerId: localProducer.producer.id,
                         rtpCapabilities: rtpCapabilities,
                         paused: true
                     });
-                    consumers[consumer.id] = consumer;
+                    localConsumers[consumer.id] = {
+                        uid: decodedIdToken.uid,
+                        consumer: consumer
+                    };
                     return res.status(200).send({
                         id: consumer.id,
                         producerId: consumer.producerId,
@@ -288,11 +462,11 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
                         producerPaused: consumer.producerPaused,
                         type: consumer.type
                     });
-                } else {
-                    //TODO: Consume producer from target router
-                    const databaseProducer: DatabaseProducer = await getGlobalProducer(globalProducerId);
-                    //TODO ...
                 }
+                const databaseProducer: DatabaseProducer = await getGlobalProducer(globalProducerId);
+                //TODO: Create forward consumer for this producer on other router and let this consumer
+                //TODO: consume this producer
+
                 return res.status(404).send({error: "Could not find producer"});
             })
             .catch((error) => {
@@ -300,27 +474,100 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): Expr
                 return res.status(403).send({error: "Forbidden"});
             });
     });
-
-    express.post(MediasoupPostUrls.FinishConsume, (req, res) => {
+    app.post(RouterPostUrls.PauseConsumer, (req, res) => {
+        debug(RouterPostUrls.PauseConsumer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         if (!req.headers.authorization) {
             return res.status(511).send({error: "Authentication Required"});
         }
-        return admin.auth().verifyIdToken(req.headers.authorization)
-            .then(() => {
-                const consumer: Consumer = consumers[req.body.consumerId];
-                if (consumer) {
-                    return consumer.resume().then(() => res.status(200).send());
+        const {consumerId} = req.body;
+        if (!consumerId) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
+        return admin.auth()
+            .verifyIdToken(req.headers.authorization)
+            .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
+                const localConsumer: LocalConsumer = localConsumers[consumerId];
+                if (localConsumer) {
+                    if (localConsumer.uid === decodedIdToken.uid) {
+                        return localConsumer.consumer.pause().then(() => res.status(200).send());
+                    }
+                    return res.status(403).send({error: "Forbidden"});
                 }
-                return res.status(404).send({error: "Could not find consumer"});
-            })
-            .catch((error) => {
-                debug(error);
-                return res.status(403).send({error: "Forbidden"});
+                const forwardConsumer: LocalConsumer = forwardConsumers[consumerId];
+                if (forwardConsumer.uid !== decodedIdToken.uid)
+                    return res.status(403).send({error: "Forbidden"});
+                // TODO: Use global producer to pause producer on target router
+
+                return res.status(404).send("Consumer not found");
+            });
+    });
+    app.post(RouterPostUrls.ResumeProducer, (req, res) => {
+        debug(RouterPostUrls.ResumeProducer);
+        if (!initialized) {
+            return res.status(503).send({error: "Not ready"});
+        }
+        if (!req.headers.authorization) {
+            return res.status(511).send({error: "Authentication Required"});
+        }
+        const {consumerId} = req.body;
+        if (!consumerId) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
+        return admin.auth()
+            .verifyIdToken(req.headers.authorization)
+            .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
+                const localConsumer: LocalConsumer = localConsumers[consumerId];
+                if (localConsumer) {
+                    if (localConsumer.uid === decodedIdToken.uid) {
+                        return localConsumer.consumer.resume().then(() => res.status(200).send());
+                    }
+                    return res.status(403).send({error: "Forbidden"});
+                }
+                const forwardConsumer: LocalConsumer = forwardConsumers[consumerId];
+                if (forwardConsumer.uid !== decodedIdToken.uid)
+                    return res.status(403).send({error: "Forbidden"});
+                // TODO: Use global producer to resume producer on target router
+
+                return res.status(404).send("Transport not found");
+            });
+    });
+    app.post(RouterPostUrls.CloseProducer, (req, res) => {
+        debug(RouterPostUrls.CloseProducer);
+        if (!initialized) {
+            return res.status(503).send({error: "Not ready"});
+        }
+        if (!req.headers.authorization) {
+            return res.status(511).send({error: "Authentication Required"});
+        }
+        const {consumerId} = req.body;
+        if (!consumerId) {
+            debug("Invalid body: " + req.body);
+            return res.status(400).send("Bad Request");
+        }
+        return admin.auth()
+            .verifyIdToken(req.headers.authorization)
+            .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
+                const localConsumer: LocalConsumer = localConsumers[consumerId];
+                if (localConsumer) {
+                    if (localConsumer.uid === decodedIdToken.uid) {
+                        localConsumer.consumer.close()
+                        return res.status(200).send();
+                    }
+                    return res.status(403).send({error: "Forbidden"});
+                }
+                const forwardConsumer: LocalConsumer = forwardConsumers[consumerId];
+                if (forwardConsumer.uid !== decodedIdToken.uid)
+                    return res.status(403).send({error: "Forbidden"});
+                // TODO: Use global producer to resume producer on target router
+
+                return res.status(404).send("Transport not found");
             });
     });
 
-    return express;
+    return app;
 }
