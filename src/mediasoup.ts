@@ -19,6 +19,8 @@ const debug = require('debug')('mediasoup');
 const config = require("./config");
 const connectionsPerCpu = 500;
 
+//TODO: Export verify token into cloud functions and use only realtime database client instead of admin sdk
+
 let initialized: boolean = false;
 
 const router: {
@@ -279,8 +281,8 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): expr
         if (!req.headers.authorization) {
             return res.status(511).send({error: "Authentication Required"});
         }
-        const {transportId, kind, rtpParameters} = req.body;
-        if (!transportId || !kind || !rtpParameters) {
+        const {transportId, kind, rtpParameters, deviceId} = req.body;
+        if (!transportId || !kind || !rtpParameters || !deviceId) {
             debug("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
@@ -299,14 +301,14 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): expr
                 // Get global producer id
                 const producerRef: admin.database.Reference = await admin.database()
                     .ref("producers")
-                    .push();
+                    .push({
+                        stageId: stageId,
+                        uid: decodedIdToken.uid,
+                        routerId: ref.key,
+                        deviceId: deviceId,
+                        kind: producer.kind
+                    } as DatabaseProducer);
                 await producerRef.onDisconnect().remove();
-                await producerRef.set({
-                    stageId: stageId,
-                    uid: decodedIdToken.uid,
-                    routerId: ref.key,
-                    kind: producer.kind
-                } as DatabaseProducer);
                 const globalProducerId: string = producerRef.key;
                 producer.on("transportclose", () => {
                     debug("producer's transport closed", producer.id);
@@ -409,8 +411,11 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): expr
                 const localProducer: LocalProducer = localProducers[globalProducerId];
                 if (localProducer) {
                     if (localProducer.uid === decodedIdToken.uid) {
-                        localProducer.producer.close()
-                        return res.status(200).send();
+                        localProducer.producer.close();
+                        return admin.database()
+                            .ref("producers/" + globalProducerId)
+                            .remove()
+                            .then(() => res.status(200).send());
                     }
                     return res.status(403).send({error: "Forbidden"});
                 }
