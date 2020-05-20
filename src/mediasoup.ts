@@ -109,7 +109,17 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): expr
         if (!initialized) {
             return res.status(501).send("Not ready yet");
         }
-        res.status(200).send("Alive and kick'n with " + router.length + " cores !");
+        return res.status(200).send("Alive and kick'n with " + router.length + " cores !");
+    });
+
+    app.get("/ping", (req, res, next) => {
+        return res
+            .set('Content-Type', 'image/svg+xml')
+            .status(200)
+            .send("<svg height=\"200\" width=\"580\" xmlns=\"http://www.w3.org/2000/svg\">\n" +
+            "    <path d=\"m-1-1h582v402h-582z\"/>\n" +
+            "    <path d=\"m223 148.453125h71v65h-71z\" stroke=\"#000\" stroke-width=\"1.5\"/>\n" +
+            "</svg>");
     });
 
     app.get(RouterGetUrls.GetRTPCapabilities, (req, res, next) => {

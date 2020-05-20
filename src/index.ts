@@ -52,7 +52,11 @@ startServer().then(
             port: port,
             slotAvailable: cpuCount * connectionsPerCpu
         };
-        admin
+        await admin
+            .firestore()
+            .collection("routers")
+            .add(serverPayload);
+        return admin
             .database()
             .ref("routers")
             .push()
