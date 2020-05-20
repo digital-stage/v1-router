@@ -45,28 +45,22 @@ startServer().then(
         const ipv4: string = await publicIp.v4();
         const ipv6: string = await publicIp.v6();
         const cpuCount: number = os.cpus().length;
+        const routerRef: admin.database.Reference = admin
+            .database()
+            .ref("routers")
+            .push()
         const serverPayload: DatabaseRouter = {
+            id: routerRef.key,
             ipv4: ipv4,
             ipv6: ipv6,
             domain: config.domain ? config.domain : os.hostname(),
             port: port,
             slotAvailable: cpuCount * connectionsPerCpu
         };
-        await admin
-            .firestore()
-            .collection("routers")
-            .add(serverPayload);
-        return admin
-            .database()
-            .ref("routers")
-            .push()
-            .then((ref: admin.database.Reference) => ref.onDisconnect().remove().then(() => ref))
-            .then((ref: admin.database.Reference) => ref.set(serverPayload).then(() => ref))
-            .then((ref: admin.database.Reference) => {
-                app.use(mediasoup(ref, ipv4, ipv6));
-                console.log("Successfully published router capabilities!")
-            })
-            .catch((error) => console.error(error));
+        await routerRef.set(serverPayload);
+        await routerRef.onDisconnect().remove();
+        app.use(mediasoup(routerRef, ipv4, ipv6));
+        console.log("Successfully published router capabilities!")
     }
 );
 
