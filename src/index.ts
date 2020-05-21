@@ -33,10 +33,10 @@ startServer().then(
         const ipv4: string = await publicIp.v4();
         const ipv6: string = await publicIp.v6();
         const cpuCount: number = os.cpus().length;
-        const routerRef: firebase.database.Reference = firebase
+        const routerRef: firebase.database.Reference = await firebase
             .database()
             .ref("routers")
-            .push()
+            .push();
         const serverPayload: DatabaseRouter = {
             id: routerRef.key,
             ipv4: ipv4,
