@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "NODE_ENV=development tsc && node ./dist/index.js",
     "test": "mocha -r ts-node/register src/test/test.ts",
-    "deploy-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production --force",
+    "deploy-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production frankfurt amsterdam --force",
     "reload-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production exec 'pm2 reload router'"
   },
   "repository": {

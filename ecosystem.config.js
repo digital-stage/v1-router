@@ -24,6 +24,22 @@ module.exports = {
             repo: "git@github.com:digital-stage/router.git",
             path: '/node/router',
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
+        },
+        frankfurt: {
+            user: 'tobias',
+            host: 'router-fra',
+            ref: 'origin/master',
+            repo: "https://github.com/digital-stage/router.git",
+            path: '/node/router',
+            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
+        },
+        amsterdam: {
+            user: 'tobias',
+            host: 'router-ams',
+            ref: 'origin/master',
+            repo: "https://github.com/digital-stage/router.git",
+            path: '/node/router',
+            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         }
     }
 };

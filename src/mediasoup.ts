@@ -398,6 +398,10 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                             });
                         }
                     } else {
+                        // The producer is on another router, so...
+                        // first create tansports to it, if not available already
+
+
                         //TODO: Create consumer on target router and consume it, forwarding to the producer
                     }
                 }
