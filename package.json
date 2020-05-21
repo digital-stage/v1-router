@@ -5,10 +5,12 @@
   "main": "index.js",
   "scripts": {
     "dev": "DEBUG=mediasoup NODE_ENV=development nodemon --watch './src/**/*.ts' --exec 'ts-node' ./src/index.ts",
-    "build": "tsc",
-    "start": "NODE_ENV=development tsc && node ./dist/index.js",
+    "build": "DEBUG=mediasoup NODE_ENV=production tsc",
+    "start": "NODE_ENV=production tsc && node ./dist/index.js",
     "test": "mocha -r ts-node/register src/test/test.ts",
-    "deploy-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production frankfurt amsterdam --force",
+    "deploy-frankfurt": "NODE_ENV=production pm2 deploy ecosystem.config.js frankfurt --force",
+    "deploy-amsterdam": "NODE_ENV=production pm2 deploy ecosystem.config.js amsterdam --force",
+    "deploy-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production --force",
     "reload-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production exec 'pm2 reload router'"
   },
   "repository": {

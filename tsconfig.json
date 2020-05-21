@@ -7,7 +7,7 @@
   },
   "lib": ["es2015"],
   "include": [
-    "src/**/*.ts"
+    "./src/**/*.ts"
   ],
   "exclude": [
     "node_modules"

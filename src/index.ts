@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as publicIp from "public-ip";
 import mediasoup from "./mediasoup";
 import {DatabaseRouter} from "./model";
-import {FIREBASE_CONFIG} from "../env";
+import {FIREBASE_CONFIG} from "./env";
 
 const os = require('os');
 
