@@ -1,8 +1,7 @@
 import * as express from "express";
 import * as firebase from 'firebase';
 import * as cors from "cors";
-import * as https from "https";
-import * as fs from "fs";
+import * as http from "http";
 import * as publicIp from "public-ip";
 import mediasoup from "./mediasoup";
 import {DatabaseRouter} from "./model";
@@ -14,7 +13,7 @@ const connectionsPerCpu = 500;
 
 const config = require("./config");
 
-const port = process.env.PORT || config.listenPort;
+const port = config.listenPort;
 
 firebase.initializeApp(FIREBASE_CONFIG);
 
@@ -23,13 +22,7 @@ app.use(express.urlencoded({extended: true}));
 app.use(cors({origin: true}));
 app.options('*', cors());
 
-const server = https.createServer({
-    key: fs.readFileSync(config.sslKey),
-    cert: fs.readFileSync(config.sslCrt),
-    ca: config.ca && fs.readFileSync(config.ca),
-    requestCert: false,
-    rejectUnauthorized: false
-}, app);
+const server = http.createServer(app);
 
 const startServer = async () => {
     server.listen(port);

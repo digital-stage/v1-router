@@ -23,6 +23,11 @@ module.exports = {
             ref: 'origin/master',
             repo: "git@github.com:digital-stage/router.git",
             path: '/node/router',
+            env: {
+                "NODE_ENV": "production",
+                "PORT": "3000",
+                "DOMAIN": "www.thepanicure.de"
+            },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         },
         frankfurt: {
@@ -31,6 +36,11 @@ module.exports = {
             ref: 'origin/master',
             repo: "https://github.com/digital-stage/router.git",
             path: '/node/router',
+            env: {
+                "NODE_ENV": "production",
+                "PORT": "3000",
+                "DOMAIN": "frankfurt.digital-stages.de"
+            },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         },
         amsterdam: {
@@ -39,6 +49,11 @@ module.exports = {
             ref: 'origin/master',
             repo: "https://github.com/digital-stage/router.git",
             path: '/node/router',
+            env: {
+                "NODE_ENV": "production",
+                "PORT": "3000",
+                "DOMAIN": "amsterdam.digital-stages.de"
+            },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         }
     }
