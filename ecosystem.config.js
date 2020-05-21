@@ -31,7 +31,7 @@ module.exports = {
             path: '/node/router',
             env: {
                 "NODE_ENV": "production",
-                "PORT": "3000",
+                "PORT": "3020",
                 "DOMAIN": "www.thepanicure.de",
                 "DEBUG": "mediasoup",
                 "SSL": true
