@@ -30,8 +30,16 @@ startServer().then(
         console.log("Running on " + config.domain + " port " + config.listenPort);
 
         // Register this server globally
-        const ipv4: string = await publicIp.v4();
-        const ipv6: string = await publicIp.v6();
+        const ipv4: string = await publicIp.v4()
+            .catch((error) => {
+                console.error(error);
+                return "";
+            });
+        const ipv6: string = await publicIp.v6()
+            .catch((error) => {
+                console.error(error);
+                return "";
+            });
         const cpuCount: number = os.cpus().length;
         const routerRef: firebase.database.Reference = await firebase
             .database()
