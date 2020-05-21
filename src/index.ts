@@ -1,11 +1,12 @@
 import * as express from "express";
-import * as admin from "firebase-admin";
+import * as firebase from 'firebase';
 import * as cors from "cors";
 import * as https from "https";
 import * as fs from "fs";
 import * as publicIp from "public-ip";
 import mediasoup from "./mediasoup";
 import {DatabaseRouter} from "./model";
+import {FIREBASE_CONFIG} from "../env";
 
 const os = require('os');
 
@@ -15,11 +16,7 @@ const config = require("./config");
 
 const port = process.env.PORT || config.listenPort;
 
-const serviceAccount = require("../firebase-adminsdk.json");
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://digitalstage-wirvsvirus.firebaseio.com"
-});
+firebase.initializeApp(FIREBASE_CONFIG);
 
 const app = express();
 app.use(express.urlencoded({extended: true}));
@@ -45,7 +42,7 @@ startServer().then(
         const ipv4: string = await publicIp.v4();
         const ipv6: string = await publicIp.v6();
         const cpuCount: number = os.cpus().length;
-        const routerRef: admin.database.Reference = admin
+        const routerRef: firebase.database.Reference = firebase
             .database()
             .ref("routers")
             .push()
@@ -59,7 +56,7 @@ startServer().then(
         };
         await routerRef.set(serverPayload);
         await routerRef.onDisconnect().remove();
-        app.use(mediasoup(routerRef, ipv4, ipv6));
+        app.use(mediasoup(routerRef.key, ipv4, ipv6));
         console.log("Successfully published router capabilities!")
     }
 );

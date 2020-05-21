@@ -9,7 +9,7 @@ import {PlainTransport} from "mediasoup/lib/PlainTransport";
 import {Producer} from "mediasoup/lib/Producer";
 // @ts-ignore
 import * as omit from "lodash.omit";
-import * as admin from "firebase-admin";
+import * as firebase from 'firebase';
 import {DatabaseGlobalProducer, DatabaseProducer} from "./model";
 import {Consumer} from "mediasoup/lib/Consumer";
 
@@ -78,12 +78,11 @@ const getAvailableRouter = (): Router | null => {
 };
 
 
-export default (ref: admin.database.Reference, ipv4: string, ipv6: string): express.Router => {
-    const routerId: string = ref.key;
+export default (routerId: string, ipv4: string, ipv6: string): express.Router => {
     init();
 
     const getGlobalProducer = (globalProducerId: string): Promise<DatabaseProducer> => {
-        return admin.database()
+        return firebase.database()
             .ref("producers/" + globalProducerId)
             .once("value")
             .then((snapshot) => {
@@ -303,7 +302,7 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): expr
     });
 
     app.post(RouterPostUrls.PauseProducer, (req, res) => {
-        debug(RouterPostUrls.CreateProducer);
+        debug(RouterPostUrls.PauseProducer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
@@ -315,20 +314,12 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): expr
             debug("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
-        return admin.auth()
-            .verifyIdToken(req.headers.authorization)
-            .then(async (decodedIdToken: admin.auth.DecodedIdToken) => {
-                const producer: Producer = localProducers[id];
-                if (producer) {
-                    return producer.pause().then(() => res.status(200).send({}));
-                }
-                const globalProducer: DatabaseProducer = await getGlobalProducer(id);
-                if (globalProducer.uid !== decodedIdToken.uid)
-                    return res.status(403).send({error: "Forbidden"});
-                // TODO: Use global producer to pause producer on target router
+        const producer: Producer = localProducers[id];
+        if (producer) {
+            return producer.pause().then(() => res.status(200).send({}));
+        }
 
-                return res.status(404).send("Transport not found");
-            });
+        return res.status(404).send("Transport not found");
     });
 
     app.post(RouterPostUrls.ResumeProducer, (req, res) => {
@@ -377,11 +368,11 @@ export default (ref: admin.database.Reference, ipv4: string, ipv6: string): expr
             debug("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
-        return admin.firestore()
+        return firebase.firestore()
             .collection("producers")
             .doc(globalProducerId)
             .get()
-            .then(async (snapshot: admin.firestore.DocumentSnapshot) => {
+            .then(async (snapshot: firebase.firestore.DocumentSnapshot) => {
                 if (snapshot.exists) {
                     const globalProducer: DatabaseGlobalProducer = snapshot.data() as DatabaseGlobalProducer;
                     if (globalProducer.routerId === routerId) {
