@@ -2,9 +2,6 @@ module.exports = {
     domain: process.env.NODE_ENV === "production" ? process.env.DOMAIN : "localhost",
     listenIp: "0.0.0.0",
     listenPort: process.env.PORT,
-    sslCrt: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/www.thepanicure.de/fullchain.pem" : "./ssl/cert.pem",
-    sslKey: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/www.thepanicure.de/privkey.pem" : "./ssl/key.pem",
-    ca: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/www.thepanicure.de/chain.pem" : undefined,
 
     mediasoup: {
         // Worker settings
