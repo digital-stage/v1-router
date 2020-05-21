@@ -13,8 +13,6 @@ const connectionsPerCpu = 500;
 
 const config = require("./config");
 
-const port = config.listenPort;
-
 firebase.initializeApp(FIREBASE_CONFIG);
 
 const app = express();
@@ -25,11 +23,11 @@ app.options('*', cors());
 const server = http.createServer(app);
 
 const startServer = async () => {
-    server.listen(port);
+    server.listen(config.listenPort);
 };
 startServer().then(
     async () => {
-        console.log("Running on port " + port);
+        console.log("Running on " + config.domain + " port " + config.listenPort);
 
         // Register this server globally
         const ipv4: string = await publicIp.v4();
@@ -44,7 +42,7 @@ startServer().then(
             ipv4: ipv4,
             ipv6: ipv6,
             domain: config.domain ? config.domain : os.hostname(),
-            port: port,
+            port: config.listenPort,
             slotAvailable: cpuCount * connectionsPerCpu
         };
         await routerRef.set(serverPayload);
