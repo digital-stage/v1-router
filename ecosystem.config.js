@@ -13,6 +13,9 @@ module.exports = {
         },
         env_production: {
             NODE_ENV: 'production'
+        },
+        env_frankfurt: {
+            NODE_ENV: 'production'
         }
     }],
 
@@ -43,7 +46,7 @@ module.exports = {
                 "DOMAIN": "frankfurt.digital-stages.de",
                 "DEBUG": "mediasoup"
             },
-            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
+            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env frankfurt'
         },
         amsterdam: {
             user: 'tobias',
