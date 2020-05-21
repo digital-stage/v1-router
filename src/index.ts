@@ -2,10 +2,12 @@ import * as express from "express";
 import * as firebase from 'firebase';
 import * as cors from "cors";
 import * as http from "http";
+import * as https from "https";
 import * as publicIp from "public-ip";
 import mediasoup from "./mediasoup";
 import {DatabaseRouter} from "./model";
 import {FIREBASE_CONFIG} from "./env";
+import * as fs from "fs";
 
 const os = require('os');
 
@@ -20,7 +22,13 @@ app.use(express.urlencoded({extended: true}));
 app.use(cors({origin: true}));
 app.options('*', cors());
 
-const server = http.createServer(app);
+const server = process.env.SSL ? https.createServer({
+    key: fs.readFileSync(config.sslKey),
+    cert: fs.readFileSync(config.sslCrt),
+    ca: config.ca && fs.readFileSync(config.ca),
+    requestCert: false,
+    rejectUnauthorized: false
+}, app) : http.createServer(app);
 
 const startServer = async () => {
     server.listen(config.listenPort);
