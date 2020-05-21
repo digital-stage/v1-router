@@ -26,7 +26,8 @@ module.exports = {
             env: {
                 "NODE_ENV": "production",
                 "PORT": "3000",
-                "DOMAIN": "www.thepanicure.de"
+                "DOMAIN": "www.thepanicure.de",
+                "DEBUG": "mediasoup"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         },
@@ -39,7 +40,8 @@ module.exports = {
             env: {
                 "NODE_ENV": "production",
                 "PORT": "3000",
-                "DOMAIN": "frankfurt.digital-stages.de"
+                "DOMAIN": "frankfurt.digital-stages.de",
+                "DEBUG": "mediasoup"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         },
@@ -52,7 +54,8 @@ module.exports = {
             env: {
                 "NODE_ENV": "production",
                 "PORT": "3000",
-                "DOMAIN": "amsterdam.digital-stages.de"
+                "DOMAIN": "amsterdam.digital-stages.de",
+                "DEBUG": "mediasoup"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         }
