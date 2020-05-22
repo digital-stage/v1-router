@@ -294,6 +294,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                 producer.on("transportclose", () => {
                     debug("producer's transport closed", producer.id);
                 });
+                debug("Created producer and producer is: " + producer.paused);
                 localProducers[producer.id] = producer;
                 return res.status(200).send({
                     id: producer.id
@@ -387,13 +388,14 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                                 rtpCapabilities: rtpCapabilities,
                                 paused: true
                             });
+                            debug("Created consumer and consumer is: " + consumer.paused);
                             localConsumers[consumer.id] = consumer;
                             return res.status(200).send({
                                 id: consumer.id,
                                 producerId: consumer.producerId,
                                 kind: consumer.kind,
                                 rtpParameters: consumer.rtpParameters,
-                                producerPaused: consumer.producerPaused,
+                                paused: consumer.paused,
                                 type: consumer.type
                             });
                         }
@@ -426,8 +428,8 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
         return res.status(404).send("Consumer not found");
     });
 
-    app.post(RouterPostUrls.ResumeProducer, (req, res) => {
-        debug(RouterPostUrls.ResumeProducer);
+    app.post(RouterPostUrls.ResumeConsumer, (req, res) => {
+        debug(RouterPostUrls.ResumeConsumer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
@@ -438,7 +440,10 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
         }
         const consumer: Consumer = localConsumers[id];
         if (consumer) {
-            return consumer.resume().then(() => res.status(200).send({}));
+            return consumer.resume().then(() => {
+                debug("Resumed consumer and consumer is: " + consumer.paused);
+                return res.status(200).send({})
+            });
         }
         return res.status(404).send("Consumer not found");
     });
