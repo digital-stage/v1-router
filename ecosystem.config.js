@@ -48,7 +48,8 @@ module.exports = {
                 "NODE_ENV": "production",
                 "PORT": "3000",
                 "DOMAIN": "frankfurt.digital-stages.de",
-                "DEBUG": "mediasoup"
+                "DEBUG": "mediasoup",
+                "PUBLIC_PORT": "443"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env frankfurt'
         },
@@ -62,7 +63,8 @@ module.exports = {
                 "NODE_ENV": "production",
                 "PORT": "3000",
                 "DOMAIN": "amsterdam.digital-stages.de",
-                "DEBUG": "mediasoup"
+                "DEBUG": "mediasoup",
+                "PUBLIC_PORT": "443"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env amsterdam'
         }
