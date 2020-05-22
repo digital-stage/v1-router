@@ -58,7 +58,7 @@ startServer().then(
             ipv4: ipv4,
             ipv6: ipv6,
             domain: config.domain ? config.domain : os.hostname(),
-            port: config.listenPort,
+            port: config.publicPort,
             slotAvailable: cpuCount * connectionsPerCpu
         };
         await routerRef.set(serverPayload);
