@@ -115,6 +115,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
         if (!initialized) {
             return res.status(501).send("Not ready yet");
         }
+        console.log("hi there ;)");
         res.status(200).send(router[0].router.rtpCapabilities);
     });
 
