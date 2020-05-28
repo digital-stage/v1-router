@@ -32,7 +32,7 @@ module.exports = {
             env: {
                 "NODE_ENV": "production",
                 "PORT": "3020",
-                "DOMAIN": "www.thepanicure.de",
+                "DOMAIN": "thepanicure.de",
                 "DEBUG": "mediasoup",
                 "SSL": true
             },
