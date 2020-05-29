@@ -1,13 +1,18 @@
-module.exports = {
-    domain: process.env.NODE_ENV === "production" ? process.env.DOMAIN : "localhost",
-    listenIp: "0.0.0.0",
-    listenPort: process.env.PORT,
-    publicPort: process.env.PUBLIC_PORT ? process.env.PUBLIC_PORT : process.env.PORT,
-    sslCrt: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/fullchain.pem" : "./ssl/cert.pem",
-    sslKey: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/privkey.pem" : "./ssl/key.pem",
-    ca: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/chain.pem" : undefined,
+import { types } from 'mediasoup';
+
+export default {
+    webserver: {
+        domain: process.env.NODE_ENV === "production" ? process.env.DOMAIN : "localhost",
+        listenIp: "0.0.0.0",
+        listenPort: Number(process.env.PORT || 3000),
+        publicPort: Number(process.env.PUBLIC_PORT || process.env.PORT || 3000),
+        sslCrt: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/fullchain.pem" : "./ssl/cert.pem",
+        sslKey: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/privkey.pem" : "./ssl/key.pem",
+        ca: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/chain.pem" : undefined,
+    },
 
     mediasoup: {
+        connectionsPerCpu: 500,
         // Worker settings
         worker: {
             rtcMinPort: 40000,
@@ -26,7 +31,7 @@ module.exports = {
                 // 'simulcast',
                 // 'svc'
             ],
-        },
+        } as types.WorkerSettings,
         // Router settings
         router: {
             mediaCodecs:
@@ -42,45 +47,45 @@ module.exports = {
                         mimeType: "video/VP8",
                         clockRate: 90000,
                         parameters:
-                            {
-                                "x-google-start-bitrate": 1000
-                            }
+                        {
+                            "x-google-start-bitrate": 1000
+                        }
                     },
                     {
                         kind: "video",
                         mimeType: "video/VP9",
                         clockRate: 90000,
                         parameters:
-                            {
-                                "profile-id": 2,
-                                "x-google-start-bitrate": 1000
-                            }
+                        {
+                            "profile-id": 2,
+                            "x-google-start-bitrate": 1000
+                        }
                     },
                     {
                         kind: "video",
                         mimeType: "video/h264",
                         clockRate: 90000,
                         parameters:
-                            {
-                                "packetization-mode": 1,
-                                "profile-level-id": "4d0032",
-                                "level-asymmetry-allowed": 1,
-                                "x-google-start-bitrate": 1000
-                            }
+                        {
+                            "packetization-mode": 1,
+                            "profile-level-id": "4d0032",
+                            "level-asymmetry-allowed": 1,
+                            "x-google-start-bitrate": 1000
+                        }
                     },
                     {
                         kind: "video",
                         mimeType: "video/h264",
                         clockRate: 90000,
                         parameters:
-                            {
-                                "packetization-mode": 1,
-                                "profile-level-id": "42e01f",
-                                "level-asymmetry-allowed": 1,
-                                "x-google-start-bitrate": 1000
-                            }
+                        {
+                            "packetization-mode": 1,
+                            "profile-level-id": "42e01f",
+                            "level-asymmetry-allowed": 1,
+                            "x-google-start-bitrate": 1000
+                        }
                     }
-                ]
+                ] as types.RtpCodecCapability[]
         },
         // WebRtcTransport settings
         webRtcTransport: {

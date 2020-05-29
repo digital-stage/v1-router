@@ -4,7 +4,7 @@ import * as cors from "cors";
 import * as http from "http";
 import * as https from "https";
 import * as publicIp from "public-ip";
-import mediasoup from "./mediasoup";
+import mediasoup from "./mediasoup.orig";
 import {DatabaseRouter} from "./model";
 import {FIREBASE_CONFIG} from "./env";
 import * as fs from "fs";
