@@ -1,4 +1,4 @@
-import * as express from "express";
+import express from "express";
 import {Worker} from "mediasoup/lib/Worker";
 import * as mediasoup from "mediasoup";
 import {RouterGetUrls, RouterPostUrls} from "./events";
@@ -7,13 +7,16 @@ import {Router} from "mediasoup/lib/Router";
 import {WebRtcTransport} from "mediasoup/lib/WebRtcTransport";
 import {PlainTransport} from "mediasoup/lib/PlainTransport";
 import {Producer} from "mediasoup/lib/Producer";
-// @ts-ignore
-import * as omit from "lodash.omit";
-import * as firebase from 'firebase';
+import omit from "lodash.omit";
+import * as firebase from 'firebase/app';
+import "firebase/firestore";
 import {DatabaseGlobalProducer, DatabaseProducer} from "./model";
 import {Consumer} from "mediasoup/lib/Consumer";
 
-const debug = require('debug')('mediasoup');
+const logRequest = require('debug')('router:Request'),
+    log = require('debug')('router:Info'),
+    warn = require('debug')('router:Warn'),
+    error = require('debug')('router:Error');
 
 const config = require("./config");
 const connectionsPerCpu = 500;
@@ -101,6 +104,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
     });
 
     app.get("/ping", (req, res, next) => {
+        logRequest("Pinged by " + req.ip);
         return res
             .set('Content-Type', 'image/svg+xml')
             .status(200)
@@ -111,11 +115,11 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
     });
 
     app.get(RouterGetUrls.GetRTPCapabilities, (req, res, next) => {
-        debug(RouterGetUrls.GetRTPCapabilities);
+        logRequest(RouterGetUrls.GetRTPCapabilities);
         if (!initialized) {
+            error("Router is not ready yet");
             return res.status(501).send("Not ready yet");
         }
-        console.log("hi there ;)");
         res.status(200).send(router[0].router.rtpCapabilities);
     });
 
@@ -123,12 +127,13 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
      * /transport/webrtc
      */
     app.get(RouterGetUrls.CreateTransport, (req, res, next) => {
-        debug(RouterGetUrls.CreateTransport);
+        logRequest(RouterGetUrls.CreateTransport);
         if (!initialized) {
             return res.status(501).send("Not ready yet");
         }
         const router: Router | null = getAvailableRouter();
         if (!router) {
+            error("Router is full");
             return res.status(501).send("Full");
         }
         return router.createWebRtcTransport({
@@ -150,19 +155,19 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                 appData: transport.appData
             }));
         }).catch((error) => {
-                console.error(error);
+                error(error);
                 return res.status(500).send({error: "Internal server error"});
             }
         )
     });
     app.post(RouterPostUrls.ConnectTransport, (req, res, next) => {
-        debug(RouterPostUrls.ConnectTransport);
+        logRequest(RouterPostUrls.ConnectTransport);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {transportId, dtlsParameters} = req.body;
         if (!transportId || !dtlsParameters) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             console.log(req.body);
             return res.status(400).send("Bad Request");
         }
@@ -171,20 +176,21 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             return webRtcTransport.connect({dtlsParameters: dtlsParameters}).then(
                 () => res.status(200).send({})
             ).catch((error) => {
-                debug(error);
+                warn(error);
                 return res.status(500).send({error: "Internal server error"});
             });
         }
+        warn('Could not find transport: ' + transportId);
         return res.status(400).send("Not found");
     });
     app.post(RouterPostUrls.CloseTransport, (req, res, next) => {
-        debug(RouterPostUrls.CloseTransport);
+        logRequest(RouterPostUrls.CloseTransport);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {transportId, dtlsParameters} = req.body;
         if (!transportId || !dtlsParameters) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const webRtcTransport: WebRtcTransport = transports.webrtc[transportId];
@@ -193,6 +199,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             transports.webrtc = omit(transports.webrtc, transportId);
             return res.status(200).send({});
         }
+        warn('Could not find transport: ' + transportId);
         return res.status(400).send("Not found");
     });
 
@@ -201,7 +208,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
      * /transport/plain
      */
     app.get(RouterGetUrls.CreatePlainTransport, (req, res, next) => {
-        debug(RouterGetUrls.CreatePlainTransport);
+        logRequest(RouterGetUrls.CreatePlainTransport);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
@@ -221,18 +228,18 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                 appData: transport.appData
             }));
         }).catch((error) => {
-            debug(error);
+            error(error);
             return res.status(500).send({error: "Internal server error"});
         });
     });
     app.get(RouterPostUrls.ConnectPlainTransport, (req, res, next) => {
-        debug(RouterPostUrls.ConnectPlainTransport);
+        logRequest(RouterPostUrls.ConnectPlainTransport);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {transportId, ip, port, rtcpPort, srtpParameters} = req.body;
         if (!transportId || !ip || !port || !rtcpPort || !srtpParameters) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const plainTransport: PlainTransport = transports.plain[transportId];
@@ -245,19 +252,19 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             }).then(
                 () => res.status(200).send({})
             ).catch((error) => {
-                debug(error);
+                error(error);
                 return res.status(500).send({error: "Internal server error"});
             });
         }
     });
     app.post(RouterPostUrls.ClosePlainTransport, (req, res, next) => {
-        debug(RouterPostUrls.ClosePlainTransport);
+        logRequest(RouterPostUrls.ClosePlainTransport);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {transportId, dtlsParameters} = req.body;
         if (!transportId || !dtlsParameters) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const plainTransport: PlainTransport = transports.plain[transportId];
@@ -266,6 +273,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             transports.plain = omit(transports.plain, transportId);
             return res.status(200).send({});
         }
+        warn('Could not find transport: ' + transportId);
         return res.status(400).send("Not found");
     });
 
@@ -274,17 +282,18 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
      *
      */
     app.post(RouterPostUrls.CreateProducer, (req, res) => {
-        debug(RouterPostUrls.CreateProducer);
+        logRequest(RouterPostUrls.CreateProducer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {transportId, kind, rtpParameters} = req.body;
         if (!transportId || !kind || !rtpParameters) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const transport: any = transports.webrtc[transportId];
         if (!transport) {
+            warn('Could not find transport: ' + transportId);
             return res.status(404).send("Transport not found");
         }
         return transport.produce({
@@ -293,9 +302,9 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
         })
             .then((producer: Producer) => {
                 producer.on("transportclose", () => {
-                    debug("producer's transport closed", producer.id);
+                    log("producer's transport closed", producer.id);
                 });
-                debug("Created producer and producer is: " + producer.paused);
+                log("Created producer and producer is: " + (producer.paused ? "paused" : "running"));
                 localProducers[producer.id] = producer;
                 return res.status(200).send({
                     id: producer.id
@@ -304,7 +313,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
     });
 
     app.post(RouterPostUrls.PauseProducer, (req, res) => {
-        debug(RouterPostUrls.PauseProducer);
+        logRequest(RouterPostUrls.PauseProducer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
@@ -313,7 +322,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
         }
         const {id} = req.body;
         if (!id) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const producer: Producer = localProducers[id];
@@ -321,34 +330,36 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             return producer.pause().then(() => res.status(200).send({}));
         }
 
+        warn('Could not find transport: ' + id);
         return res.status(404).send("Transport not found");
     });
 
     app.post(RouterPostUrls.ResumeProducer, (req, res) => {
-        debug(RouterPostUrls.ResumeProducer);
+        logRequest(RouterPostUrls.ResumeProducer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {id} = req.body;
         if (!id) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const producer: Producer = localProducers[id];
         if (producer) {
             return producer.resume().then(() => res.status(200).send({}));
         }
+        warn('Could not find producer: ' + id);
         return res.status(404).send("Producer not found");
     });
 
     app.post(RouterPostUrls.CloseProducer, (req, res) => {
-        debug(RouterPostUrls.CloseProducer);
+        logRequest(RouterPostUrls.CloseProducer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {id} = req.body;
         if (!id) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const producer: Producer = localProducers[id];
@@ -356,18 +367,19 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             producer.close();
             return res.status(200).send({});
         }
+        warn('Could not find producer: ' + id);
         return res.status(404).send("Producer not found");
     });
 
 
     app.post(RouterPostUrls.CreateConsumer, (req, res) => {
-        debug(RouterPostUrls.CreateConsumer);
+        logRequest(RouterPostUrls.CreateConsumer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {transportId, globalProducerId, rtpCapabilities} = req.body;
         if (!transportId || !globalProducerId || !rtpCapabilities) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         return firebase.firestore()
@@ -389,7 +401,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                                 rtpCapabilities: rtpCapabilities,
                                 paused: true
                             });
-                            debug("Created consumer and consumer is: " + consumer.paused);
+                            log("Created consumer and consumer is: " + (consumer.paused ? "paused" : "running"));
                             localConsumers[consumer.id] = consumer;
                             return res.status(200).send({
                                 id: consumer.id,
@@ -408,55 +420,58 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                         //TODO: Create consumer on target router and consume it, forwarding to the producer
                     }
                 }
+                warn('Could not find producer: ' + globalProducerId);
                 return res.status(404).send({error: "Could not find producer"});
             });
     });
 
     app.post(RouterPostUrls.PauseConsumer, (req, res) => {
-        debug(RouterPostUrls.PauseConsumer);
+        logRequest(RouterPostUrls.PauseConsumer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {id} = req.body;
         if (!id) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const consumer: Consumer = localConsumers[id];
         if (consumer) {
             return consumer.pause().then(() => res.status(200).send({}));
         }
+        warn('Could not find consumer: ' + id);
         return res.status(404).send("Consumer not found");
     });
 
     app.post(RouterPostUrls.ResumeConsumer, (req, res) => {
-        debug(RouterPostUrls.ResumeConsumer);
+        logRequest(RouterPostUrls.ResumeConsumer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {id} = req.body;
         if (!id) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const consumer: Consumer = localConsumers[id];
         if (consumer) {
             return consumer.resume().then(() => {
-                debug("Resumed consumer and consumer is: " + consumer.paused);
+                log("Resumed consumer and consumer is: " + (consumer.paused ? "paused" : "running"));
                 return res.status(200).send({})
             });
         }
+        warn('Could not find consumer: ' + id);
         return res.status(404).send("Consumer not found");
     });
 
     app.post(RouterPostUrls.CloseConsumer, (req, res) => {
-        debug(RouterPostUrls.CloseConsumer);
+        logRequest(RouterPostUrls.CloseConsumer);
         if (!initialized) {
             return res.status(503).send({error: "Not ready"});
         }
         const {id} = req.body;
         if (!id) {
-            debug("Invalid body: " + req.body);
+            warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
         const consumer: Consumer = localConsumers[id];
@@ -465,6 +480,7 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             localConsumers = omit(localConsumers, id);
             return res.status(200).send({});
         }
+        warn('Could not find consumer: ' + id);
         return res.status(404).send("Consumer not found");
     });
 

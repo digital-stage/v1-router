@@ -1,6 +1,7 @@
-import * as express from "express";
-import * as firebase from 'firebase';
-import * as cors from "cors";
+import express from "express";
+import * as firebase from 'firebase/app';
+import "firebase/database"
+import cors from "cors";
 import * as http from "http";
 import * as https from "https";
 import * as publicIp from "public-ip";
