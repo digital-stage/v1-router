@@ -18,6 +18,7 @@ const config = require("./config");
 
 firebase.initializeApp(FIREBASE_CONFIG);
 
+
 const app = express();
 app.use(express.urlencoded({extended: true}));
 app.use(cors({origin: true}));
@@ -36,6 +37,9 @@ const startServer = async () => {
 };
 startServer().then(
     async () => {
+        //TODO: Replace with app token
+        await firebase.auth().signInWithEmailAndPassword("test@digital-stage.org", "testtesttest");
+
         console.log("Running on " + config.domain + " port " + config.listenPort);
 
         // Register this server globally
