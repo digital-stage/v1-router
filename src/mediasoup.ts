@@ -9,8 +9,8 @@ import {PlainTransport} from "mediasoup/lib/PlainTransport";
 import {Producer} from "mediasoup/lib/Producer";
 import omit from "lodash.omit";
 import * as firebase from 'firebase/app';
-import "firebase/firestore";
-import {DatabaseGlobalProducer, DatabaseProducer} from "./model";
+import "firebase/database";
+import {DatabaseGlobalProducer} from "./model";
 import {Consumer} from "mediasoup/lib/Consumer";
 
 const logRequest = require('debug')('router:Request'),
@@ -83,15 +83,6 @@ const getAvailableRouter = (): Router | null => {
 
 export default (routerId: string, ipv4: string, ipv6: string): express.Router => {
     init();
-
-    const getGlobalProducer = (globalProducerId: string): Promise<DatabaseProducer> => {
-        return firebase.database()
-            .ref("producers/" + globalProducerId)
-            .once("value")
-            .then((snapshot) => {
-                return snapshot.val() as DatabaseProducer;
-            });
-    }
 
     const app = express.Router();
     app.use(express.json());
@@ -382,13 +373,12 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
-        return firebase.firestore()
-            .collection("producers")
-            .doc(globalProducerId)
-            .get()
-            .then(async (snapshot: firebase.firestore.DocumentSnapshot) => {
-                if (snapshot.exists) {
-                    const globalProducer: DatabaseGlobalProducer = snapshot.data() as DatabaseGlobalProducer;
+        return firebase.database()
+            .ref("/producers/" + globalProducerId)
+            .once("value")
+            .then(async (snapshot: firebase.database.DataSnapshot) => {
+                if (snapshot.exists()) {
+                    const globalProducer: DatabaseGlobalProducer = snapshot.val() as DatabaseGlobalProducer;
                     if (globalProducer.routerId === routerId) {
                         // This is the right router
                         if (localProducers[globalProducer.producerId]) {
