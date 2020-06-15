@@ -1,6 +1,7 @@
 import express from "express";
 import * as firebase from 'firebase/app';
 import "firebase/database"
+import "firebase/auth"
 import cors from "cors";
 import * as http from "http";
 import * as https from "https";
