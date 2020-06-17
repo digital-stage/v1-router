@@ -5,7 +5,7 @@ module.exports = {
     publicPort: process.env.PUBLIC_PORT ? process.env.PUBLIC_PORT : process.env.PORT,
     sslCrt: process.env.NODE_ENV === "production" && process.env.SSL === "true" ? process.env.CRT : "./ssl/cert.pem",
     sslKey: process.env.NODE_ENV === "production" && process.env.SSL === "true" ? process.env.KEY : "./ssl/key.pem",
-    ca: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/chain.pem" : undefined,
+    ca: process.env.NODE_ENV === "production" && process.env.SSL === "true" ? process.env.CA : undefined,
 
     mediasoup: {
         // Worker settings
