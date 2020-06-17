@@ -145,8 +145,8 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                 sctpParameters: transport.sctpParameters,
                 appData: transport.appData
             }));
-        }).catch((error) => {
-                error(error);
+        }).catch((err) => {
+                error(err);
                 return res.status(500).send({error: "Internal server error"});
             }
         )
@@ -218,8 +218,8 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                 sctpParameters: transport.sctpParameters,
                 appData: transport.appData
             }));
-        }).catch((error) => {
-            error(error);
+        }).catch((err) => {
+            error(err);
             return res.status(500).send({error: "Internal server error"});
         });
     });
@@ -242,8 +242,8 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
                 srtpParameters: srtpParameters,
             }).then(
                 () => res.status(200).send({})
-            ).catch((error) => {
-                error(error);
+            ).catch((err) => {
+                error(err);
                 return res.status(500).send({error: "Internal server error"});
             });
         }
