@@ -32,6 +32,7 @@ module.exports = {
             env: {
                 "NODE_ENV": "production",
                 "PORT": "3020",
+                "IP": "46.101.149.130",
                 "DOMAIN": "fra.thepanicure.de",
                 "DEBUG": "router*",
                 "SSL": "true",
