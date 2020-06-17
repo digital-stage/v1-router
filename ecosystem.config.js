@@ -27,7 +27,7 @@ module.exports = {
             user: 'node',
             host: 'ocean-fra-node',
             ref: 'origin/master',
-            repo: "git@github.com:digital-stage/router.git",
+            repo: "https://github.com/digital-stage/router.git",
             path: '/node/router',
             env: {
                 "NODE_ENV": "production",
