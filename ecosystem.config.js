@@ -25,14 +25,14 @@ module.exports = {
     deploy: {
         production: {
             user: 'node',
-            host: 'ocean-node',
+            host: 'ocean-fra-node',
             ref: 'origin/master',
             repo: "git@github.com:digital-stage/router.git",
             path: '/node/router',
             env: {
                 "NODE_ENV": "production",
                 "PORT": "3020",
-                "DOMAIN": "thepanicure.de",
+                "DOMAIN": "fra.thepanicure.de",
                 "DEBUG": "router*",
                 "SSL": true
             },
