@@ -14,6 +14,9 @@ module.exports = {
         env_production: {
             NODE_ENV: 'production'
         },
+        env_production2: {
+            NODE_ENV: 'production'
+        },
         env_frankfurt: {
             NODE_ENV: 'production'
         },
@@ -41,6 +44,25 @@ module.exports = {
                 "CA": "/etc/letsencrypt/live/fra.thepanicure.de/chain.pem"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
+        },
+        production2: {
+            user: 'node',
+            host: 'ocean-node',
+            ref: 'origin/master',
+            repo: "https://github.com/digital-stage/router.git",
+            path: '/node/router',
+            env: {
+                "NODE_ENV": "production",
+                "PORT": "3020",
+                "IP": "167.172.168.55",
+                "DOMAIN": "thepanicure.de",
+                "DEBUG": "router*",
+                "SSL": "true",
+                "CRT": "/etc/letsencrypt/live/thepanicure.de/fullchain.pem",
+                "KEY": "/etc/letsencrypt/live/thepanicure.de/privkey.pem",
+                "CA": "/etc/letsencrypt/live/thepanicure.de/chain.pem"
+            },
+            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production2'
         },
         frankfurt: {
             user: 'tobias',
