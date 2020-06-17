@@ -34,7 +34,9 @@ module.exports = {
                 "PORT": "3020",
                 "DOMAIN": "fra.thepanicure.de",
                 "DEBUG": "router*",
-                "SSL": true
+                "SSL": "true",
+                "CRT": "/etc/letsencrypt/live/fra.thepanicure.de/fullchain.pem",
+                "KEY": "/etc/letsencrypt/live/fra.thepanicure.de/privkey.pem"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         },

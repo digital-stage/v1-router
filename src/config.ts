@@ -3,8 +3,8 @@ module.exports = {
     listenIp: "0.0.0.0",
     listenPort: process.env.PORT,
     publicPort: process.env.PUBLIC_PORT ? process.env.PUBLIC_PORT : process.env.PORT,
-    sslCrt: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/fullchain.pem" : "./ssl/cert.pem",
-    sslKey: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/privkey.pem" : "./ssl/key.pem",
+    sslCrt: process.env.NODE_ENV === "production" && process.env.SSL === "true" ? process.env.CRT : "./ssl/cert.pem",
+    sslKey: process.env.NODE_ENV === "production" && process.env.SSL === "true" ? process.env.KEY : "./ssl/key.pem",
     ca: process.env.NODE_ENV === "production" ? "/etc/letsencrypt/live/thepanicure.de/chain.pem" : undefined,
 
     mediasoup: {
