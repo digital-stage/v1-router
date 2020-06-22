@@ -36,12 +36,12 @@ module.exports = {
                 "NODE_ENV": "production",
                 "PORT": "3020",
                 "IP": "46.101.149.130",
-                "DOMAIN": "fra.thepanicure.de",
+                "DOMAIN": "fra.routers.digital-stage.org",
                 "DEBUG": "router*",
                 "SSL": "true",
-                "CRT": "/etc/letsencrypt/live/fra.thepanicure.de/fullchain.pem",
-                "KEY": "/etc/letsencrypt/live/fra.thepanicure.de/privkey.pem",
-                "CA": "/etc/letsencrypt/live/fra.thepanicure.de/chain.pem"
+                "CRT": "/etc/letsencrypt/live/fra.routers.digital-stage.org/fullchain.pem",
+                "KEY": "/etc/letsencrypt/live/fra.routers.digital-stage.org/privkey.pem",
+                "CA": "/etc/letsencrypt/live/fra.routers.digital-stage.org/chain.pem"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         },
