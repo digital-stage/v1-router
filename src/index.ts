@@ -1,24 +1,21 @@
 import express from "express";
-import * as firebase from 'firebase/app';
-import "firebase/database"
-import "firebase/auth"
 import cors from "cors";
 import * as http from "http";
 import * as https from "https";
 import * as publicIp from "public-ip";
 import mediasoup from "./mediasoup";
-import {DatabaseRouter} from "./model";
-import {FIREBASE_CONFIG} from "./env";
 import * as fs from "fs";
+import {Producer, Router} from "./model/model.common";
+import fetch from "node-fetch";
 
 const os = require('os');
 
 const connectionsPerCpu = 500;
 
+const AUTH_URL = "https://auth.api.digital-stage.org";
+const API_URL = "http://localhost:4000";
+
 const config = require("./config");
-
-firebase.initializeApp(FIREBASE_CONFIG);
-
 
 const app = express();
 app.use(express.urlencoded({extended: true}));
@@ -36,11 +33,94 @@ const server = process.env.SSL ? https.createServer({
 const startServer = async () => {
     server.listen(config.listenPort);
 };
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+
+let token = null;
+const getToken = (): Promise<any> => {
+    return fetch(AUTH_URL + "/login", {
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        method: "POST",
+        body: JSON.stringify({
+            email: "test@digital-stage.org",
+            password: "testtesttest"
+        })
+    })
+        .then(result => {
+            if (result.ok)
+                return result.json();
+            throw new Error(result.statusText);
+        })
+        .then(t => {
+            token = t;
+            authCounts = 0;
+        });
+}
+let authCounts = 0;
+export const getProducer = async (id: string): Promise<Producer> => {
+    if (!token) {
+        await getToken();
+    }
+    return fetch(API_URL + "/producer/" + id, {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: "Bearer " + token
+        },
+    })
+        .then(async result => {
+            if (result.ok)
+                return result.json();
+            if (result.statusText === "Unauthorized") {
+                // Try again
+                authCounts++;
+                if (authCounts < 10) {
+                    await sleep(1000);
+                    return getToken()
+                        .then(() => getProducer(id));
+                }
+            }
+            throw new Error(result.statusText);
+        })
+}
+export const registerRouter = (url: string, ipv4: string, ipv6: string, port: number, slotAvailable: number) => {
+    return fetch(API_URL + "/routers/create", {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: "Bearer " + token
+        },
+        method: "POST",
+        body: JSON.stringify({
+            url: url,
+            ipv4: ipv4,
+            ipv6: ipv6,
+            port: port
+        })
+    })
+        .then(async result => {
+            if (result.ok)
+                return result.json();
+            if (result.statusText === "Unauthorized") {
+                // Try again
+                authCounts++;
+                if (authCounts < 10) {
+                    await sleep(1000);
+                    return getToken()
+                        .then(() => registerRouter(url, ipv4, ipv6, port, slotAvailable));
+                }
+            }
+            throw new Error(result.statusText);
+        })
+};
+
+
 startServer().then(
     async () => {
-        //TODO: Replace with app token
-        await firebase.auth().signInWithEmailAndPassword("test@digital-stage.org", "testtesttest");
-
         console.log("Running on " + config.domain + " port " + config.listenPort);
 
         // Register this server globally
@@ -55,21 +135,15 @@ startServer().then(
                 return "";
             });
         const cpuCount: number = os.cpus().length;
-        const routerRef: firebase.database.Reference = await firebase
-            .database()
-            .ref("routers")
-            .push();
-        const serverPayload: DatabaseRouter = {
-            id: routerRef.key,
-            ipv4: ipv4,
-            ipv6: ipv6,
-            domain: config.domain ? config.domain : os.hostname(),
-            port: config.publicPort,
-            slotAvailable: cpuCount * connectionsPerCpu
-        };
-        await routerRef.set(serverPayload);
-        await routerRef.onDisconnect().remove();
-        app.use(mediasoup(routerRef.key, ipv4, ipv6));
+
+        const router: Router = await registerRouter(
+            config.domain ? config.domain : os.hostname(),
+            ipv4,
+            ipv6,
+            config.publicPort,
+            cpuCount * connectionsPerCpu
+        );
+        app.use(mediasoup(router._id, ipv4, ipv6));
         console.log("Successfully published router capabilities!")
     }
 );

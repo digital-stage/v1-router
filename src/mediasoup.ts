@@ -8,10 +8,8 @@ import {WebRtcTransport} from "mediasoup/lib/WebRtcTransport";
 import {PlainTransport} from "mediasoup/lib/PlainTransport";
 import {Producer} from "mediasoup/lib/Producer";
 import omit from "lodash.omit";
-import * as firebase from 'firebase/app';
-import "firebase/database";
-import {DatabaseGlobalProducer} from "./model";
 import {Consumer} from "mediasoup/lib/Consumer";
+import {getProducer} from "./index";
 
 const logRequest = require('debug')('router:Request'),
     log = require('debug')('router:Info'),
@@ -373,21 +371,19 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
             warn("Invalid body: " + req.body);
             return res.status(400).send("Bad Request");
         }
-        return firebase.database()
-            .ref("/producers/" + globalProducerId)
-            .once("value")
-            .then(async (snapshot: firebase.database.DataSnapshot) => {
-                if (snapshot.exists()) {
-                    const globalProducer: DatabaseGlobalProducer = snapshot.val() as DatabaseGlobalProducer;
-                    if (globalProducer.routerId === routerId) {
+
+        return getProducer(globalProducerId)
+            .then(async producer => {
+                if (producer) {
+                    if (producer.routerId === routerId) {
                         // This is the right router
-                        if (localProducers[globalProducer.producerId]) {
+                        if (localProducers[producer._id]) {
                             const transport: WebRtcTransport = transports.webrtc[transportId];
                             if (!transport) {
                                 return res.status(400).send("Transport not found");
                             }
                             const consumer: Consumer = await transport.consume({
-                                producerId: globalProducer.producerId,
+                                producerId: producer._id,
                                 rtpCapabilities: rtpCapabilities,
                                 paused: true
                             });
@@ -409,10 +405,11 @@ export default (routerId: string, ipv4: string, ipv6: string): express.Router =>
 
                         //TODO: Create consumer on target router and consume it, forwarding to the producer
                     }
+                } else {
+                    warn('Could not find producer: ' + globalProducerId);
+                    return res.status(404).send({error: "Could not find producer"});
                 }
-                warn('Could not find producer: ' + globalProducerId);
-                return res.status(404).send({error: "Could not find producer"});
-            });
+            })
     });
 
     app.post(RouterPostUrls.PauseConsumer, (req, res) => {
