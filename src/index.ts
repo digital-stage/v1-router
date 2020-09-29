@@ -165,10 +165,10 @@ const startServer = () =>
             }
         });
 
-startServer().then(
-    () => {
+startServer()
+    .then(() => {
         console.log("Running on " + (config.useSSL === "true" ? "https://" : "http://") + url + ":" + config.listenPort);
-    }
-);
+    })
+    .catch(error => console.error(error));
 
 module.exports = app;
