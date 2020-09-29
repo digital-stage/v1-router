@@ -3,7 +3,7 @@ module.exports = {
     password: 'testtesttest',
     connectionsPerCpu: 500,
     auth_url: process.env.NODE_ENV === "production" ? process.env.AUTH_URL : "https://auth.digital-stage.org",
-    api_url: process.env.NODE_ENV === "production" ? process.env.API_URL : "http://api.digital-stage.org",
+    api_url: process.env.NODE_ENV === "production" ? process.env.API_URL : "https://api.digital-stage.org",
     domain: process.env.NODE_ENV === "production" ? process.env.DOMAIN : "localhost",
     listenIp: "0.0.0.0",
     listenPort: process.env.PORT,

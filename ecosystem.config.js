@@ -35,7 +35,7 @@ module.exports = {
             env: {
                 "NODE_ENV": "production",
                 "AUTH_URL": "https://auth.digital-stage.org",
-                "API_URL": "http://api.digital-stage.org",
+                "API_URL": "https://api.digital-stage.org",
                 "PORT": "3020",
                 "IP": "46.101.149.130",
                 "DOMAIN": "fra.routers.digital-stage.org",
