@@ -1,20 +1,25 @@
 import express from "express";
 import {Worker} from "mediasoup/lib/Worker";
 import * as mediasoup from "mediasoup";
-import {RouterGetUrls, RouterPostUrls} from "./events";
+import {RouterEvents, RouterGetUrls, RouterPostUrls, RouterRequests} from "./events";
 import * as os from "os";
-import {Router} from "mediasoup/lib/Router";
-import {WebRtcTransport} from "mediasoup/lib/WebRtcTransport";
+import {Router as MediasoupRouter} from "mediasoup/lib/Router";
+import {DtlsParameters, WebRtcTransport} from "mediasoup/lib/WebRtcTransport";
 import {PlainTransport} from "mediasoup/lib/PlainTransport";
 import {Producer} from "mediasoup/lib/Producer";
 import omit from "lodash.omit";
 import {Consumer} from "mediasoup/lib/Consumer";
-import {getProducer} from "./index";
+import {getProducerAndEventuallyRequestToken} from "./index";
+import {Router} from "./model/model.common";
+import pino from "pino";
+import socketIO from "socket.io";
+import {RtpCapabilities} from "mediasoup/src/RtpParameters";
+import * as https from "https";
+import http from "http";
+import {RtpParameters} from "mediasoup/lib/RtpParameters";
 
-const logRequest = require('debug')('router:Request'),
-    log = require('debug')('router:Info'),
-    warn = require('debug')('router:Warn'),
-    error = require('debug')('router:Error');
+
+const logger = pino({level: process.env.LOG_LEVEL || 'info'});
 
 const config = require("./config");
 const connectionsPerCpu = 500;
@@ -24,7 +29,7 @@ const connectionsPerCpu = 500;
 let initialized: boolean = false;
 
 const router: {
-    router: Router,
+    router: MediasoupRouter,
     numConnections: number
 }[] = [];
 
@@ -48,10 +53,6 @@ let localConsumers: {
     [id: string]: Consumer
 } = {};
 
-let forwardConsumers: {
-    [id: string]: Consumer
-} = {};
-
 
 const init = async () => {
     const cpuCount: number = os.cpus().length;
@@ -63,13 +64,13 @@ const init = async () => {
             rtcMinPort: config.mediasoup.worker.rtcMinPort,
             rtcMaxPort: config.mediasoup.worker.rtcMaxPort
         });
-        const workerRouter: Router = await worker.createRouter({mediaCodecs});
+        const workerRouter: MediasoupRouter = await worker.createRouter({mediaCodecs});
         router.push({router: workerRouter, numConnections: 0});
     }
     initialized = true;
 };
 
-const getAvailableRouter = (): Router | null => {
+const getAvailableRouter = (): MediasoupRouter | null => {
     for (let i = 0; i < router.length; i++) {
         if (router[i].numConnections < connectionsPerCpu) {
             return router[i].router;
@@ -78,398 +79,325 @@ const getAvailableRouter = (): Router | null => {
     return null;
 };
 
+const createMediasoupSocket = async (routerData: Router, server: https.Server | http.Server): Promise<socketIO.Server> => {
+    await init();
 
-export default (routerId: string, ipv4: string, ipv6: string): express.Router => {
-    init();
+    const io = socketIO(server);
 
-    const app = express.Router();
-    app.use(express.json());
+    io.on("connection", (socket: socketIO.Socket) => {
+        let transportIds: {} = {};
+        let producerIds: {} = {};
+        let consumerIds: {} = {};
 
-    app.get("/", (req, res, next) => {
-        if (!initialized) {
-            return res.status(501).send("Not ready yet");
-        }
-        return res.status(200).send("Alive and kick'n with " + router.length + " cores !");
-    });
-
-    app.get("/ping", (req, res, next) => {
-        logRequest("Pinged by " + req.ip);
-        return res
-            .set('Content-Type', 'image/svg+xml')
-            .status(200)
-            .send("<svg height=\"200\" width=\"580\" xmlns=\"http://www.w3.org/2000/svg\">\n" +
-                "    <path d=\"m-1-1h582v402h-582z\"/>\n" +
-                "    <path d=\"m223 148.453125h71v65h-71z\" stroke=\"#000\" stroke-width=\"1.5\"/>\n" +
-                "</svg>");
-    });
-
-    app.get(RouterGetUrls.GetRTPCapabilities, (req, res, next) => {
-        logRequest(RouterGetUrls.GetRTPCapabilities);
-        if (!initialized) {
-            error("Router is not ready yet");
-            return res.status(501).send("Not ready yet");
-        }
-        res.status(200).send(router[0].router.rtpCapabilities);
-    });
-
-    /***
-     * /transport/webrtc
-     */
-    app.get(RouterGetUrls.CreateTransport, (req, res, next) => {
-        logRequest(RouterGetUrls.CreateTransport);
-        if (!initialized) {
-            return res.status(501).send("Not ready yet");
-        }
-        const router: Router | null = getAvailableRouter();
-        if (!router) {
-            error("Router is full");
-            return res.status(501).send("Full");
-        }
-        return router.createWebRtcTransport({
-            preferTcp: false,
-            listenIps: config.mediasoup.webRtcTransport.listenIps,
-            enableUdp: true,
-            enableTcp: true,
-            preferUdp: true,
-            initialAvailableOutgoingBitrate: config.mediasoup.webRtcTransport.initialAvailableOutgoingBitrate
-        }).then((transport: WebRtcTransport) => {
-            transports.webrtc[transport.id] = transport;
-
-            return res.status(200).send(JSON.stringify({
-                id: transport.id,
-                iceParameters: transport.iceParameters,
-                iceCandidates: transport.iceCandidates,
-                dtlsParameters: transport.dtlsParameters,
-                sctpParameters: transport.sctpParameters,
-                appData: transport.appData
-            }));
-        }).catch((err) => {
-                error(err);
-                return res.status(500).send({error: "Internal server error"});
+        socket.on(RouterRequests.GetRTPCapabilities, (payload: {}, callback: (error: string, rtpCapabilities?: RtpCapabilities) => void) => {
+            logger.trace(RouterRequests.GetRTPCapabilities);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
             }
-        )
-    });
-    app.post(RouterPostUrls.ConnectTransport, (req, res, next) => {
-        logRequest(RouterPostUrls.ConnectTransport);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {transportId, dtlsParameters} = req.body;
-        if (!transportId || !dtlsParameters) {
-            warn("Invalid body: " + req.body);
-            console.log(req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const webRtcTransport: WebRtcTransport = transports.webrtc[transportId];
-        if (webRtcTransport) {
-            return webRtcTransport.connect({dtlsParameters: dtlsParameters}).then(
-                () => res.status(200).send({})
-            ).catch((error) => {
-                warn(error);
-                return res.status(500).send({error: "Internal server error"});
-            });
-        }
-        warn('Could not find transport: ' + transportId);
-        return res.status(400).send("Not found");
-    });
-    app.post(RouterPostUrls.CloseTransport, (req, res, next) => {
-        logRequest(RouterPostUrls.CloseTransport);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {transportId, dtlsParameters} = req.body;
-        if (!transportId || !dtlsParameters) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const webRtcTransport: WebRtcTransport = transports.webrtc[transportId];
-        if (webRtcTransport) {
-            webRtcTransport.close();
-            transports.webrtc = omit(transports.webrtc, transportId);
-            return res.status(200).send({});
-        }
-        warn('Could not find transport: ' + transportId);
-        return res.status(400).send("Not found");
-    });
-
-
-    /***
-     * /transport/plain
-     */
-    app.get(RouterGetUrls.CreatePlainTransport, (req, res, next) => {
-        logRequest(RouterGetUrls.CreatePlainTransport);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const router: Router | null = getAvailableRouter();
-        if (!router) {
-            return res.status(509).send("Full");
-        }
-        return router.createPlainTransport({
-            listenIp: ipv6,
-            rtcpMux: true,
-            comedia: true
-        }).then((transport: PlainTransport) => {
-            transports.plain[transport.id] = transport;
-            return res.status(200).send(JSON.stringify({
-                id: transport.id,
-                sctpParameters: transport.sctpParameters,
-                appData: transport.appData
-            }));
-        }).catch((err) => {
-            error(err);
-            return res.status(500).send({error: "Internal server error"});
+            return callback(undefined, router[0].router.rtpCapabilities);
         });
-    });
-    app.get(RouterPostUrls.ConnectPlainTransport, (req, res, next) => {
-        logRequest(RouterPostUrls.ConnectPlainTransport);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {transportId, ip, port, rtcpPort, srtpParameters} = req.body;
-        if (!transportId || !ip || !port || !rtcpPort || !srtpParameters) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const plainTransport: PlainTransport = transports.plain[transportId];
-        if (plainTransport) {
-            return plainTransport.connect({
-                ip: ip,
-                port: port,
-                rtcpPort: rtcpPort,
-                srtpParameters: srtpParameters,
-            }).then(
-                () => res.status(200).send({})
-            ).catch((err) => {
-                error(err);
-                return res.status(500).send({error: "Internal server error"});
-            });
-        }
-    });
-    app.post(RouterPostUrls.ClosePlainTransport, (req, res, next) => {
-        logRequest(RouterPostUrls.ClosePlainTransport);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {transportId, dtlsParameters} = req.body;
-        if (!transportId || !dtlsParameters) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const plainTransport: PlainTransport = transports.plain[transportId];
-        if (plainTransport) {
-            plainTransport.close();
-            transports.plain = omit(transports.plain, transportId);
-            return res.status(200).send({});
-        }
-        warn('Could not find transport: ' + transportId);
-        return res.status(400).send("Not found");
-    });
 
+        socket.on(RouterRequests.CreateTransport, (payload: {}, callback: (error: string | null, transportOptions?: any) => void) => {
+            logger.trace(RouterRequests.CreateTransport);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const router: MediasoupRouter | null = getAvailableRouter();
+            if (!router) {
+                logger.error("Router is full");
+                return callback("Router is full");
+            }
+            return router.createWebRtcTransport({
+                preferTcp: false,
+                listenIps: config.mediasoup.webRtcTransport.listenIps,
+                enableUdp: true,
+                enableTcp: true,
+                preferUdp: true,
+                initialAvailableOutgoingBitrate: config.mediasoup.webRtcTransport.initialAvailableOutgoingBitrate
+            }).then((transport: WebRtcTransport) => {
+                transports.webrtc[transport.id] = transport;
+                transportIds[transport.id] = true;
 
-    /***
-     *
-     */
-    app.post(RouterPostUrls.CreateProducer, (req, res) => {
-        logRequest(RouterPostUrls.CreateProducer);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {transportId, kind, rtpParameters} = req.body;
-        if (!transportId || !kind || !rtpParameters) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const transport: any = transports.webrtc[transportId];
-        if (!transport) {
-            warn('Could not find transport: ' + transportId);
-            return res.status(404).send("Transport not found");
-        }
-        return transport.produce({
-            kind: kind,
-            rtpParameters: rtpParameters
-        })
-            .then((producer: Producer) => {
-                producer.on("transportclose", () => {
-                    log("producer's transport closed", producer.id);
+                callback(null, {
+                    id: transport.id,
+                    iceParameters: transport.iceParameters,
+                    iceCandidates: transport.iceCandidates,
+                    dtlsParameters: transport.dtlsParameters,
+                    sctpParameters: transport.sctpParameters,
+                    appData: transport.appData
                 });
-                log("Created producer and producer is: " + (producer.paused ? "paused" : "running"));
-                localProducers[producer.id] = producer;
-                return res.status(200).send({
-                    id: producer.id
-                });
+            }).catch((err) => {
+                logger.error(err);
+                return callback("Internal server error");
             });
-    });
+        });
 
-    app.post(RouterPostUrls.PauseProducer, (req, res) => {
-        logRequest(RouterPostUrls.PauseProducer);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        if (!req.headers.authorization) {
-            return res.status(511).send({error: "Authentication Required"});
-        }
-        const {id} = req.body;
-        if (!id) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const producer: Producer = localProducers[id];
-        if (producer) {
-            return producer.pause().then(() => res.status(200).send({}));
-        }
+        socket.on(RouterRequests.ConnectTransport, (payload: {
+            transportId: string;
+            dtlsParameters: DtlsParameters;
+        }, callback: (error: string | null) => void) => {
+            logger.trace(RouterRequests.ConnectTransport);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const webRtcTransport: WebRtcTransport = transports.webrtc[payload.transportId];
+            if (webRtcTransport) {
+                return webRtcTransport.connect({dtlsParameters: payload.dtlsParameters}).then(
+                    () => callback(null)
+                ).catch((error) => {
+                    logger.warn(error);
+                    return callback("Internal server error");
+                });
+            }
+            logger.warn('Could not find transport: ' + payload.transportId);
+            return callback("Internal server error");
+        });
 
-        warn('Could not find transport: ' + id);
-        return res.status(404).send("Transport not found");
-    });
+        socket.on(RouterRequests.CloseTransport, (payload: {
+            transportId: string;
+            dtlsParameters: DtlsParameters;
+        }, callback: (error?: string) => void) => {
+            logger.trace(RouterRequests.ConnectTransport);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const webRtcTransport: WebRtcTransport = transports.webrtc[payload.transportId];
+            if (webRtcTransport) {
+                webRtcTransport.close();
+                transports.webrtc = omit(transports.webrtc, payload.transportId);
+                delete transportIds[webRtcTransport.id];
+                return callback();
+            }
+            logger.warn('Could not find transport: ' + payload.transportId);
+            return callback("Could not find transport");
+        });
 
-    app.post(RouterPostUrls.ResumeProducer, (req, res) => {
-        logRequest(RouterPostUrls.ResumeProducer);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {id} = req.body;
-        if (!id) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const producer: Producer = localProducers[id];
-        if (producer) {
-            return producer.resume().then(() => res.status(200).send({}));
-        }
-        warn('Could not find producer: ' + id);
-        return res.status(404).send("Producer not found");
-    });
+        socket.on(RouterRequests.CreateProducer, (payload: {
+            transportId: string;
+            kind: "audio" | "video";
+            rtpParameters: RtpParameters;
+        }, callback: (error: string | null, payload?: { id: string }) => void) => {
+            logger.trace(RouterRequests.CreateProducer);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const transport: any = transports.webrtc[payload.transportId];
+            if (!transport) {
+                logger.warn('Could not find transport: ' + payload.transportId);
+                return callback("Could not find transport");
+            }
+            return transport.produce({
+                kind: payload.kind,
+                rtpParameters: payload.rtpParameters
+            })
+                .then((producer: Producer) => {
+                    producer.on("close", () => {
+                        console.log("producer closed: " + producer.id);
+                    })
+                    producer.on("transportclose", () => {
+                        console.log("transport closed so producer closed: " + producer.id);
+                    })
+                    logger.debug("Created producer " + producer.id + " and producer is: " + (producer.paused ? "paused" : "running"));
+                    localProducers[producer.id] = producer;
+                    producerIds[producer.id] = true;
+                    return callback(null, {
+                        id: producer.id
+                    });
+                });
+        });
 
-    app.post(RouterPostUrls.CloseProducer, (req, res) => {
-        logRequest(RouterPostUrls.CloseProducer);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {id} = req.body;
-        if (!id) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const producer: Producer = localProducers[id];
-        if (producer) {
-            producer.close();
-            return res.status(200).send({});
-        }
-        warn('Could not find producer: ' + id);
-        return res.status(404).send("Producer not found");
-    });
+        socket.on(RouterRequests.PauseProducer, (id: string, callback: (error: string | null) => void) => {
+            logger.trace(RouterRequests.PauseProducer);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const producer: Producer = localProducers[id];
+            if (producer) {
+                return producer.pause()
+                    .then(() => callback(null));
+            }
+            logger.warn('Could not find producer: ' + id);
+            callback("Producer not found");
+        });
 
+        socket.on(RouterRequests.ResumeProducer, (id: string, callback: (error: string | null) => void) => {
+            logger.trace(RouterRequests.ResumeProducer);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const producer: Producer = localProducers[id];
+            if (producer) {
+                return producer.resume()
+                    .then(() => callback(null));
+            }
+            logger.warn('Could not find producer: ' + id);
+            callback("Producer not found");
+        });
 
-    app.post(RouterPostUrls.CreateConsumer, (req, res) => {
-        logRequest(RouterPostUrls.CreateConsumer);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {transportId, globalProducerId, rtpCapabilities} = req.body;
-        if (!transportId || !globalProducerId || !rtpCapabilities) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
+        socket.on(RouterRequests.CloseProducer, (id: string, callback: (error: string | null) => void) => {
+            logger.trace(RouterRequests.CloseProducer);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const producer: Producer = localProducers[id];
+            if (producer) {
+                producer.close();
+                localProducers = omit(localProducers, producer.id);
+                delete producerIds[producer.id];
+                return callback(null);
+            }
+            logger.warn('Could not find producer: ' + id);
+            callback("Producer not found");
+        });
 
-        return getProducer(globalProducerId)
-            .then(async producer => {
-                if (producer) {
-                    if (producer.routerId === routerId) {
-                        // This is the right router
-                        if (localProducers[producer._id]) {
-                            const transport: WebRtcTransport = transports.webrtc[transportId];
-                            if (!transport) {
-                                return res.status(400).send("Transport not found");
+        socket.on(RouterRequests.CreateConsumer, (payload: {
+            transportId: string;
+            globalProducerId: string;
+            rtpCapabilities: RtpCapabilities;
+        }, callback: (error: string | null, consumer?: any) => void) => {
+            logger.trace(RouterRequests.CreateConsumer);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            return getProducerAndEventuallyRequestToken(payload.globalProducerId)
+                .then(async producer => {
+                    logger.trace("fetched!");
+                    if (producer) {
+                        logger.trace("Got valid producer");
+                        if (producer.routerId === routerData._id) {
+                            logger.trace("This is the right router");
+                            // This is the right router
+                            if (localProducers[producer.routerProducerId]) {
+                                logger.trace("Found assigned producer");
+                                const transport: WebRtcTransport = transports.webrtc[payload.transportId];
+                                if (!transport) {
+                                    return callback("Transport not found");
+                                }
+                                const consumer: Consumer = await transport.consume({
+                                    producerId: producer.routerProducerId,
+                                    rtpCapabilities: payload.rtpCapabilities,
+                                    paused: true
+                                });
+                                consumer.observer.on("close", () => {
+                                    console.log("consumer closed: " + consumer.id);
+                                })
+                                logger.debug("Created consumer and consumer is: " + (consumer.paused ? "paused" : "running"));
+                                localConsumers[consumer.id] = consumer;
+                                consumerIds[consumer.id] = true;
+                                return callback(null, {
+                                    id: consumer.id,
+                                    producerId: consumer.producerId,
+                                    kind: consumer.kind,
+                                    rtpParameters: consumer.rtpParameters,
+                                    paused: consumer.paused,
+                                    type: consumer.type
+                                });
+                            } else {
+                                logger.warn('Could not find producer on this router: ' + payload.globalProducerId);
+                                callback("Producer not found");
                             }
-                            const consumer: Consumer = await transport.consume({
-                                producerId: producer._id,
-                                rtpCapabilities: rtpCapabilities,
-                                paused: true
-                            });
-                            log("Created consumer and consumer is: " + (consumer.paused ? "paused" : "running"));
-                            localConsumers[consumer.id] = consumer;
-                            return res.status(200).send({
-                                id: consumer.id,
-                                producerId: consumer.producerId,
-                                kind: consumer.kind,
-                                rtpParameters: consumer.rtpParameters,
-                                paused: consumer.paused,
-                                type: consumer.type
-                            });
+                        } else {
+                            logger.trace("Stream is on different router");
+                            // The producer is on another router, so...
+                            // first create tansports to it, if not available already
+
+
+                            //TODO: Create consumer on target router and consume it, forwarding to the producer
+                            callback("Router not found");
                         }
                     } else {
-                        // The producer is on another router, so...
-                        // first create tansports to it, if not available already
-
-
-                        //TODO: Create consumer on target router and consume it, forwarding to the producer
+                        logger.warn('Could not find producer in the database: ' + payload.globalProducerId);
+                        return callback("Producer not found");
                     }
-                } else {
-                    warn('Could not find producer: ' + globalProducerId);
-                    return res.status(404).send({error: "Could not find producer"});
+                })
+        });
+
+        socket.on(RouterRequests.PauseConsumer, (id: string, callback: (error: string | null) => void) => {
+            logger.trace(RouterRequests.PauseConsumer);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const consumer: Consumer = localConsumers[id];
+            if (consumer) {
+                return consumer.pause().then(() => callback(null));
+            }
+            logger.warn('Could not find consumer: ' + id);
+            return callback("Consumer not found");
+        });
+
+        socket.on(RouterRequests.ResumeConsumer, (id: string, callback: (error: string | null) => void) => {
+            logger.trace(RouterRequests.ResumeConsumer);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const consumer: Consumer = localConsumers[id];
+            if (consumer) {
+                return consumer.resume().then(() => callback(null));
+            }
+            logger.warn('Could not find consumer: ' + id);
+            return callback("Consumer not found");
+        });
+
+        socket.on(RouterRequests.CloseConsumer, (id: string, callback: (error: string | null) => void) => {
+            logger.trace(RouterRequests.CloseConsumer);
+            if (!initialized) {
+                logger.error("Router is not ready yet");
+                return callback("Router is not ready yet");
+            }
+            const consumer: Consumer = localConsumers[id];
+            if (consumer) {
+                consumer.close();
+                localConsumers = omit(localConsumers, id);
+                delete consumerIds[consumer.id];
+                return callback(null);
+            }
+            logger.warn('Could not find consumer: ' + id);
+            return callback("Consumer not found");
+        });
+
+        socket.on("disconnect", () => {
+            logger.debug("Client disconnected, cleaning up");
+            for (const key in consumerIds) {
+                if (consumerIds[key]) {
+                    logger.debug("Removing consumer " + key);
+                    localConsumers[key].close();
+                    delete localConsumers[key];
                 }
-            })
+            }
+            consumerIds = {};
+            for (const key in producerIds) {
+                if (producerIds[key]) {
+                    logger.debug("Removing producer " + key);
+                    localProducers[key].close();
+                    delete localProducers[key];
+                }
+            }
+            producerIds = {};
+            for (const key in transportIds) {
+                if (transportIds[key]) {
+                    logger.debug("Removing transport " + key);
+                    transports.webrtc[key].close();
+                    delete transports.webrtc[key];
+                }
+            }
+            transportIds = {};
+            console.log("Transports are now: ");
+            console.log(transports);
+        })
+
     });
 
-    app.post(RouterPostUrls.PauseConsumer, (req, res) => {
-        logRequest(RouterPostUrls.PauseConsumer);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {id} = req.body;
-        if (!id) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const consumer: Consumer = localConsumers[id];
-        if (consumer) {
-            return consumer.pause().then(() => res.status(200).send({}));
-        }
-        warn('Could not find consumer: ' + id);
-        return res.status(404).send("Consumer not found");
-    });
-
-    app.post(RouterPostUrls.ResumeConsumer, (req, res) => {
-        logRequest(RouterPostUrls.ResumeConsumer);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {id} = req.body;
-        if (!id) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const consumer: Consumer = localConsumers[id];
-        if (consumer) {
-            return consumer.resume().then(() => {
-                log("Resumed consumer and consumer is: " + (consumer.paused ? "paused" : "running"));
-                return res.status(200).send({})
-            });
-        }
-        warn('Could not find consumer: ' + id);
-        return res.status(404).send("Consumer not found");
-    });
-
-    app.post(RouterPostUrls.CloseConsumer, (req, res) => {
-        logRequest(RouterPostUrls.CloseConsumer);
-        if (!initialized) {
-            return res.status(503).send({error: "Not ready"});
-        }
-        const {id} = req.body;
-        if (!id) {
-            warn("Invalid body: " + req.body);
-            return res.status(400).send("Bad Request");
-        }
-        const consumer: Consumer = localConsumers[id];
-        if (consumer) {
-            consumer.close();
-            localConsumers = omit(localConsumers, id);
-            return res.status(200).send({});
-        }
-        warn('Could not find consumer: ' + id);
-        return res.status(404).send("Consumer not found");
-    });
-
-    return app;
+    return io;
 }
+export default createMediasoupSocket;

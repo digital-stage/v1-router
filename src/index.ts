@@ -1,38 +1,31 @@
 import express from "express";
 import cors from "cors";
-import * as http from "http";
 import * as https from "https";
 import * as publicIp from "public-ip";
-import mediasoup from "./mediasoup";
 import * as fs from "fs";
 import {Producer, Router} from "./model/model.common";
 import fetch from "node-fetch";
+import pino from "pino";
+import expressPino from "express-pino-logger";
+import path from "path";
+import createMediasoupSocket from "./mediasoup";
 
 const os = require('os');
 
-const connectionsPerCpu = 500;
-
-const AUTH_URL = "https://auth.api.digital-stage.org";
-const API_URL = "http://localhost:4000";
 
 const config = require("./config");
+
+const logger = pino({level: process.env.LOG_LEVEL || 'info'});
 
 const app = express();
 app.use(express.urlencoded({extended: true}));
 app.use(cors({origin: true}));
 app.options('*', cors());
+app.use(express.json());
+app.use(expressPino());
 
-const server = process.env.SSL ? https.createServer({
-    key: fs.readFileSync(config.sslKey),
-    cert: fs.readFileSync(config.sslCrt),
-    ca: config.ca && fs.readFileSync(config.ca),
-    requestCert: false,
-    rejectUnauthorized: false
-}, app) : http.createServer(app);
 
-const startServer = async () => {
-    server.listen(config.listenPort);
-};
+let authCounts = 0;
 
 function sleep(ms) {
     return new Promise((resolve) => {
@@ -40,56 +33,33 @@ function sleep(ms) {
     });
 }
 
-let token = null;
-const getToken = (): Promise<any> => {
-    return fetch(AUTH_URL + "/login", {
+const getToken = (): Promise<string> => {
+    return fetch(config.auth_url + "/login", {
         headers: {
             'Content-Type': 'application/json'
         },
         method: "POST",
         body: JSON.stringify({
-            email: "test@digital-stage.org",
-            password: "testtesttest"
+            email: config.email,
+            password: config.password
         })
     })
         .then(result => {
-            if (result.ok)
+            if (result.ok) {
+                logger.info("Logged in as " + config.email);
                 return result.json();
+            }
             throw new Error(result.statusText);
         })
         .then(t => {
             token = t;
             authCounts = 0;
+            return t;
         });
 }
-let authCounts = 0;
-export const getProducer = async (id: string): Promise<Producer> => {
-    if (!token) {
-        await getToken();
-    }
-    return fetch(API_URL + "/producer/" + id, {
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: "Bearer " + token
-        },
-    })
-        .then(async result => {
-            if (result.ok)
-                return result.json();
-            if (result.statusText === "Unauthorized") {
-                // Try again
-                authCounts++;
-                if (authCounts < 10) {
-                    await sleep(1000);
-                    return getToken()
-                        .then(() => getProducer(id));
-                }
-            }
-            throw new Error(result.statusText);
-        })
-}
-export const registerRouter = (url: string, ipv4: string, ipv6: string, port: number, slotAvailable: number) => {
-    return fetch(API_URL + "/routers/create", {
+
+export async function fetchRouter(token: string, url: string, ipv4: string, ipv6: string, port: number, slotAvailable: number) {
+    const result = await fetch(config.api_url + "/routers/create", {
         headers: {
             'Content-Type': 'application/json',
             Authorization: "Bearer " + token
@@ -101,50 +71,103 @@ export const registerRouter = (url: string, ipv4: string, ipv6: string, port: nu
             ipv6: ipv6,
             port: port
         })
+    });
+    if (result.ok) {
+        logger.info("Registered router as " + url);
+        return result.json();
+    }
+    throw new Error(result.statusText);
+}
+
+export const getProducer = async (token: string, id: string): Promise<Producer> => {
+    return fetch(config.api_url + "/producers/" + id, {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: "Bearer " + token
+        },
     })
         .then(async result => {
             if (result.ok)
                 return result.json();
-            if (result.statusText === "Unauthorized") {
-                // Try again
-                authCounts++;
-                if (authCounts < 10) {
-                    await sleep(1000);
-                    return getToken()
-                        .then(() => registerRouter(url, ipv4, ipv6, port, slotAvailable));
-                }
-            }
             throw new Error(result.statusText);
+        });
+}
+
+let token = null;
+export const getProducerAndEventuallyRequestToken = async (id: string): Promise<Producer> => {
+    if (!token) {
+        throw new Error("Token is null");
+    }
+    return getProducer(token, id)
+        .catch(error => {
+            if (error === "Unauthorized") {
+                // Retry
+                logger.warn("Refresh token")
+                return sleep(1000)
+                    .then(() => getToken())
+                    .then(token => getProducer(token, id));
+            }
         })
 };
 
+const url = config.domain ? config.domain : os.hostname();
+
+
+const registerRouter = async (): Promise<Router> => {
+    // Register this server globally
+    const ipv4: string = await publicIp.v4()
+        .catch((error) => {
+            console.error(error);
+            return "";
+        });
+    const ipv6: string = await publicIp.v6()
+        .catch((error) => {
+            console.error(error);
+            return "";
+        });
+    const cpuCount: number = os.cpus().length;
+
+    token = await getToken();
+
+    return await fetchRouter(
+        token,
+        url,
+        ipv4,
+        ipv6,
+        config.publicPort,
+        cpuCount * config.connectionsPerCpu
+    );
+}
+
+const startServer = () =>
+    registerRouter()
+        //.then(router => createMediasoupExpress(router))
+        .then((router: Router): Promise<any> => {
+            //app.use(mediasoupExpress);
+
+            if (config.useSSL === "true") {
+                const server = https.createServer({
+                    key: fs.readFileSync(
+                        path.resolve(config.sslKey)
+                    ),
+                    cert: fs.readFileSync(
+                        path.resolve(config.sslCrt)
+                    ),
+                    ca: process.env.SSL_CA || config.ca ? fs.readFileSync(path.resolve(process.env.SSL_CA || config.ca)) : undefined,
+                    requestCert: true,
+                    rejectUnauthorized: false
+                }, app);
+                return createMediasoupSocket(router, server)
+                    .then(() => server.listen(config.listenPort));
+            } else {
+                const server = app.listen(config.listenPort);
+                return createMediasoupSocket(router, server);
+            }
+        });
 
 startServer().then(
-    async () => {
-        console.log("Running on " + config.domain + " port " + config.listenPort);
-
-        // Register this server globally
-        const ipv4: string = await publicIp.v4()
-            .catch((error) => {
-                console.error(error);
-                return "";
-            });
-        const ipv6: string = await publicIp.v6()
-            .catch((error) => {
-                console.error(error);
-                return "";
-            });
-        const cpuCount: number = os.cpus().length;
-
-        const router: Router = await registerRouter(
-            config.domain ? config.domain : os.hostname(),
-            ipv4,
-            ipv6,
-            config.publicPort,
-            cpuCount * connectionsPerCpu
-        );
-        app.use(mediasoup(router._id, ipv4, ipv6));
-        console.log("Successfully published router capabilities!")
+    () => {
+        console.log("Running on " + (config.useSSL === "true" ? "https://" : "http://") + url + ":" + config.listenPort);
     }
 );
 

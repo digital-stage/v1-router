@@ -60,6 +60,7 @@ export interface Producer {
     kind: "audio" | "video" | "ov";
     stageMemberId?: StageMemberId;
     routerId?: RouterId;
+    routerProducerId?: string;
 }
 
 export interface Router {

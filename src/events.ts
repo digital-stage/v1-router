@@ -1,3 +1,31 @@
+export enum RouterEvents {
+    TransportCreated = "transport-created",
+    TransportPaused = "transport-connected",
+    TransportCloses = "transport-closed",
+    ProducerCreated = "producer-created",
+    ProducerPaused = "producer-paused",
+    ProducerResumed = "producer-resumed",
+    ProducerCloses = "producer-closed",
+    ConsumerCreated = "consumer-created",
+    ConsumerPaused = "consumer-paused",
+    ConsumerResumed = "consumer-resumed",
+    ConsumerCloses = "consumer-closed",
+}
+
+export enum RouterRequests {
+    GetRTPCapabilities = "rtp-capabilities",
+    CreateTransport = "create-transport",
+    ConnectTransport = "connect-transport",
+    CloseTransport = "close-transport",
+    CreateProducer = "create-producer",
+    PauseProducer = "pause-producer",
+    ResumeProducer = "resume-producer",
+    CloseProducer = "close-producer",
+    CreateConsumer = "create-consumer",
+    PauseConsumer = "pause-consumer",
+    ResumeConsumer = "resume-consumer",
+    CloseConsumer = "close-consumer",
+}
 
 export const RouterGetUrls = {
     GetRTPCapabilities: "/rtp-capabilities",
