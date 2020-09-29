@@ -34,10 +34,11 @@ module.exports = {
             path: '/node/router',
             env: {
                 "NODE_ENV": "production",
+                "AUTH_URL": "https://auth.digital-stage.org",
+                "API_URL": "http://api.digital-stage.org",
                 "PORT": "3020",
                 "IP": "46.101.149.130",
                 "DOMAIN": "fra.routers.digital-stage.org",
-                "DEBUG": "router*",
                 "SSL": "true",
                 "CRT": "/etc/letsencrypt/live/fra.routers.digital-stage.org/fullchain.pem",
                 "KEY": "/etc/letsencrypt/live/fra.routers.digital-stage.org/privkey.pem",
