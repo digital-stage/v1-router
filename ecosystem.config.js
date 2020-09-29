@@ -33,6 +33,8 @@ module.exports = {
             repo: "https://github.com/digital-stage/router.git",
             path: '/node/router',
             env: {
+                "EMAIL": "test@digital-stage.org",
+                "PASSWORD": "testtesttest",
                 "NODE_ENV": "production",
                 "AUTH_URL": "https://auth.digital-stage.org",
                 "API_URL": "https://api.digital-stage.org",

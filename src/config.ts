@@ -1,6 +1,6 @@
 module.exports = {
-    email: 'test@digital-stage.org',
-    password: 'testtesttest',
+    email: process.env.NODE_ENV === "production" ? process.env.EMAIL : 'test@digital-stage.org',
+    password: process.env.NODE_ENV === "production" ? process.env.PASSWORD : 'testtesttest',
     connectionsPerCpu: 500,
     auth_url: process.env.NODE_ENV === "production" ? process.env.AUTH_URL : "https://auth.digital-stage.org",
     api_url: process.env.NODE_ENV === "production" ? process.env.API_URL : "https://api.digital-stage.org",
