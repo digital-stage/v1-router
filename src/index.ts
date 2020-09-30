@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import * as https from "https";
 import * as fs from "fs";
 import {Router, RouterId} from "./model/model.common";
 import pino from "pino";
@@ -9,7 +8,6 @@ import path from "path";
 import createMediasoupSocket from "./mediasoup";
 import io from 'socket.io-client';
 import {createInitialRouter, getToken, ProducerAPI, RouterList} from "./util";
-import http from "http";
 
 const config = require("./config");
 
@@ -22,28 +20,15 @@ app.options('*', cors());
 app.use(express.json());
 app.use(expressPino());
 
-let server: https.Server | http.Server = undefined;
+app.get('/beat', function (req, res) {
+    res.send('Boom!');
+});
+
+const server = app.listen(config.listenPort);
 
 function startRouter(token: string, router: Router, routerList: RouterList) {
     const producerAPI = new ProducerAPI(token);
-    if (config.useSSL === "true") {
-        server = https.createServer({
-            key: fs.readFileSync(
-                path.resolve(config.sslKey)
-            ),
-            cert: fs.readFileSync(
-                path.resolve(config.sslCrt)
-            ),
-            ca: process.env.SSL_CA || config.ca ? fs.readFileSync(path.resolve(process.env.SSL_CA || config.ca)) : undefined,
-            requestCert: true,
-            rejectUnauthorized: false
-        }, app);
-        return createMediasoupSocket(server, router, routerList, producerAPI)
-            .then(() => server.listen(config.listenPort));
-    } else {
-        server = app.listen(config.listenPort);
-        return createMediasoupSocket(server, router, routerList, producerAPI);
-    }
+    return createMediasoupSocket(server, router, routerList, producerAPI);
 }
 
 function stopRouter() {

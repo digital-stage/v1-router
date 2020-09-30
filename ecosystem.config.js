@@ -7,7 +7,7 @@ module.exports = {
         instances: 1,
         autorestart: true,
         watch: false,
-        max_memory_restart: '1G',
+        max_memory_restart: '3G',
         env: {
             NODE_ENV: 'development'
         },
@@ -39,13 +39,9 @@ module.exports = {
                 "PASSWORD": "testtesttest",
                 "API_URL": "https://api.digital-stage.org",
                 "ROUTER_DIST_URL": "http://routers.digital-stage.org",
-                "PORT": "3020",
+                "PORT": "3000",
                 "IP": "46.101.149.130",
-                "DOMAIN": "fra.routers.digital-stage.org",
-                "SSL": "true",
-                "CRT": "/etc/letsencrypt/live/fra.routers.digital-stage.org/fullchain.pem",
-                "KEY": "/etc/letsencrypt/live/fra.routers.digital-stage.org/privkey.pem",
-                "CA": "/etc/letsencrypt/live/fra.routers.digital-stage.org/chain.pem"
+                "DOMAIN": "fra.routers.digital-stage.org"
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         },
