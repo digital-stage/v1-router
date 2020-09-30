@@ -1,7 +1,6 @@
-import express from "express";
 import {Worker} from "mediasoup/lib/Worker";
 import * as mediasoup from "mediasoup";
-import {RouterEvents, RouterGetUrls, RouterPostUrls, RouterRequests} from "./events";
+import {RouterRequests} from "./events";
 import * as os from "os";
 import {Router as MediasoupRouter} from "mediasoup/lib/Router";
 import {DtlsParameters, WebRtcTransport} from "mediasoup/lib/WebRtcTransport";
@@ -9,7 +8,6 @@ import {PlainTransport} from "mediasoup/lib/PlainTransport";
 import {Producer} from "mediasoup/lib/Producer";
 import omit from "lodash.omit";
 import {Consumer} from "mediasoup/lib/Consumer";
-import {getProducerAndEventuallyRequestToken} from "./index";
 import {Router} from "./model/model.common";
 import pino from "pino";
 import socketIO from "socket.io";
@@ -17,6 +15,7 @@ import {RtpCapabilities} from "mediasoup/src/RtpParameters";
 import * as https from "https";
 import http from "http";
 import {RtpParameters} from "mediasoup/lib/RtpParameters";
+import {ProducerAPI, RouterList} from "./util";
 
 
 const logger = pino({level: process.env.LOG_LEVEL || 'info'});
@@ -28,7 +27,7 @@ const connectionsPerCpu = 500;
 
 let initialized: boolean = false;
 
-const router: {
+const mediasoupRouters: {
     router: MediasoupRouter,
     numConnections: number
 }[] = [];
@@ -65,21 +64,21 @@ const init = async () => {
             rtcMaxPort: config.mediasoup.worker.rtcMaxPort
         });
         const workerRouter: MediasoupRouter = await worker.createRouter({mediaCodecs});
-        router.push({router: workerRouter, numConnections: 0});
+        mediasoupRouters.push({router: workerRouter, numConnections: 0});
     }
     initialized = true;
 };
 
 const getAvailableRouter = (): MediasoupRouter | null => {
-    for (let i = 0; i < router.length; i++) {
-        if (router[i].numConnections < connectionsPerCpu) {
-            return router[i].router;
+    for (let i = 0; i < mediasoupRouters.length; i++) {
+        if (mediasoupRouters[i].numConnections < connectionsPerCpu) {
+            return mediasoupRouters[i].router;
         }
     }
     return null;
 };
 
-const createMediasoupSocket = async (routerData: Router, server: https.Server | http.Server): Promise<socketIO.Server> => {
+const createMediasoupSocket = async (server: https.Server | http.Server, router: Router, routerList: RouterList, producerAPI: ProducerAPI): Promise<socketIO.Server> => {
     await init();
 
     const io = socketIO(server);
@@ -95,7 +94,7 @@ const createMediasoupSocket = async (routerData: Router, server: https.Server | 
                 logger.error("Router is not ready yet");
                 return callback("Router is not ready yet");
             }
-            return callback(undefined, router[0].router.rtpCapabilities);
+            return callback(undefined, mediasoupRouters[0].router.rtpCapabilities);
         });
 
         socket.on(RouterRequests.CreateTransport, (payload: {}, callback: (error: string | null, transportOptions?: any) => void) => {
@@ -268,12 +267,12 @@ const createMediasoupSocket = async (routerData: Router, server: https.Server | 
                 logger.error("Router is not ready yet");
                 return callback("Router is not ready yet");
             }
-            return getProducerAndEventuallyRequestToken(payload.globalProducerId)
+            return producerAPI.getProducer(payload.globalProducerId)
                 .then(async producer => {
                     logger.trace("fetched!");
                     if (producer) {
                         logger.trace("Got valid producer");
-                        if (producer.routerId === routerData._id) {
+                        if (producer.routerId === router._id) {
                             logger.trace("This is the right router");
                             // This is the right router
                             if (localProducers[producer.routerProducerId]) {

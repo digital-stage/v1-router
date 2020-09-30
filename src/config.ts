@@ -4,6 +4,7 @@ module.exports = {
     connectionsPerCpu: 500,
     auth_url: process.env.NODE_ENV === "production" ? process.env.AUTH_URL : "https://auth.digital-stage.org",
     api_url: process.env.NODE_ENV === "production" ? process.env.API_URL : "https://api.digital-stage.org",
+    router_dist_url: process.env.NODE_ENV === "production" ? process.env.ROUTER_DIST_URL : "https://routers.digital-stage.org",
     domain: process.env.NODE_ENV === "production" ? process.env.DOMAIN : "localhost",
     listenIp: "0.0.0.0",
     listenPort: process.env.PORT,
