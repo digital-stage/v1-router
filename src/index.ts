@@ -1,10 +1,8 @@
 import express from "express";
 import cors from "cors";
-import * as fs from "fs";
 import {Router, RouterId} from "./model/model.common";
 import pino from "pino";
 import expressPino from "express-pino-logger";
-import path from "path";
 import createMediasoupSocket from "./mediasoup";
 import io from 'socket.io-client';
 import {createInitialRouter, getToken, ProducerAPI, RouterList} from "./util";
