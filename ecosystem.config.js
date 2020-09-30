@@ -40,6 +40,7 @@ module.exports = {
                 "API_URL": "https://api.digital-stage.org",
                 "ROUTER_DIST_URL": "https://routers.digital-stage.org",
                 "PORT": "3000",
+                "PUBLIC_PORT": "443",
                 "IP": "46.101.149.130",
                 "DOMAIN": "fra.routers.digital-stage.org"
             },
