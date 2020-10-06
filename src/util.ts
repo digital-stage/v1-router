@@ -1,8 +1,8 @@
 import fetch from "node-fetch";
 import pino from "pino";
-import {ProducerId, Router, RouterId} from "./model/model.common";
 import * as publicIp from "public-ip";
 import os from "os";
+import {GlobalAudioProducerId, GlobalVideoProducerId, Router, RouterId} from "./model/model.server";
 
 const config = require("./config");
 
@@ -65,7 +65,7 @@ export class ProducerAPI {
         this.token = token;
     }
 
-    private fetchProducer(id: ProducerId) {
+    private fetchProducer(id: GlobalAudioProducerId | GlobalVideoProducerId) {
         return fetch(config.api_url + "/producers/" + id, {
             headers: {
                 'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ export class ProducerAPI {
             });
     }
 
-    private getProducerWithRetries(id: ProducerId, retries: number = 10) {
+    private getProducerWithRetries(id: GlobalAudioProducerId | GlobalVideoProducerId, retries: number = 10) {
         return this.fetchProducer(id)
             .catch(error => {
                 if (retries > 0) {
@@ -93,10 +93,11 @@ export class ProducerAPI {
                             .then(() => this.getProducerWithRetries(id, --retries));
                     }
                 }
+                throw error;
             })
     }
 
-    getProducer(id: ProducerId) {
+    getProducer(id: GlobalAudioProducerId | GlobalVideoProducerId) {
         return this.getProducerWithRetries(id, 10);
     }
 }

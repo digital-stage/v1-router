@@ -1,11 +1,11 @@
 import express from "express";
 import cors from "cors";
-import {Router, RouterId} from "./model/model.common";
 import pino from "pino";
 import expressPino from "express-pino-logger";
 import createMediasoupSocket from "./mediasoup";
 import io from 'socket.io-client';
 import {createInitialRouter, getToken, ProducerAPI, RouterList} from "./util";
+import {Router, RouterId} from "./model/model.server";
 
 const config = require("./config");
 
@@ -85,6 +85,7 @@ async function start() {
 start()
     .then(() => {
         logger.info("Running on " + (config.useSSL === "true" ? "https://" : "http://") + config.domain + ":" + config.listenPort);
+        logger.info("Using API at " + config.api_url);
     })
     .catch(error => logger.error(error));
 

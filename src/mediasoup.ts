@@ -8,7 +8,6 @@ import {PlainTransport} from "mediasoup/lib/PlainTransport";
 import {Producer} from "mediasoup/lib/Producer";
 import omit from "lodash.omit";
 import {Consumer} from "mediasoup/lib/Consumer";
-import {Router} from "./model/model.common";
 import pino from "pino";
 import socketIO from "socket.io";
 import {RtpCapabilities} from "mediasoup/src/RtpParameters";
@@ -16,6 +15,7 @@ import * as https from "https";
 import http from "http";
 import {RtpParameters} from "mediasoup/lib/RtpParameters";
 import {ProducerAPI, RouterList} from "./util";
+import {Router} from "./model/model.server";
 
 
 const logger = pino({level: process.env.LOG_LEVEL || 'info'});
@@ -318,6 +318,10 @@ const createMediasoupSocket = async (server: https.Server | http.Server, router:
                         return callback("Producer not found");
                     }
                 })
+                .catch(error => {
+                    logger.error(error);
+                    return callback(error);
+                });
         });
 
         socket.on(RouterRequests.PauseConsumer, (id: string, callback: (error: string | null) => void) => {
