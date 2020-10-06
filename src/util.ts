@@ -75,6 +75,7 @@ export class ProducerAPI {
             .then(async result => {
                 if (result.ok)
                     return result.json();
+                logger.warn("Got invalid result " + result.status + " from " + config.api_url + "/producers/" + id);
                 throw new Error(result.statusText);
             });
     }
