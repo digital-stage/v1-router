@@ -49,13 +49,17 @@ export async function createInitialRouter(): Promise<Partial<Router>> {
         });
     const cpuCount: number = os.cpus().length;
 
-    return {
+    const initial = {
         url: config.domain,
         port: config.publicPort,
         ipv4: ipv4,
         ipv6: ipv6,
         availableSlots: cpuCount * config.connectionsPerCpu
-    }
+    };
+    logger.info("Using initial configuration:");
+    logger.info(initial);
+
+    return initial;
 }
 
 export class ProducerAPI {
