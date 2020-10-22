@@ -41,26 +41,23 @@ export async function createInitialRouter(): Promise<Partial<Router>> {
             logger.warn(error);
             return "";
         });
-    /* const ipv6: string = await publicIp.v6()
-         .catch((error) => {
-             logger.warn("Could not obtain IPv6 address:");
-             logger.warn(error);
-             return "";
-         });
-     */
+
+    let ipv6: string = '';
+    if (process.env.USE_IPV6) {
+        ipv6 = await publicIp.v6()
+            .catch((error) => {
+                logger.warn("Could not obtain IPv6 address:");
+                logger.warn(error);
+                return "";
+            });
+    }
     const cpuCount: number = os.cpus().length;
 
-    /*   const initial = {
-           url: config.domain,
-           port: config.publicPort,
-           ipv4: ipv4,
-           ipv6: ipv6,
-           availableSlots: cpuCount * config.connectionsPerCpu
-       };*/
     const initial = {
         url: config.domain,
         port: config.publicPort,
         ipv4: ipv4,
+        ipv6: ipv6,
         availableSlots: cpuCount * config.connectionsPerCpu
     };
     logger.info("Using initial configuration:");
