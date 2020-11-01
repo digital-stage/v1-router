@@ -13,8 +13,8 @@ module.exports = {
     mediasoup: {
         // Worker settings
         worker: {
-            rtcMinPort: process.env.RTC_MIN_PORT,
-            rtcMaxPort: process.env.RTC_MAX_PORT,
+            rtcMinPort: process.env.RTC_MIN_PORT || 40000,
+            rtcMaxPort: process.env.RTC_MAX_PORT || 49999,
             logLevel: "warn",
             logTags: [
                 "info",
