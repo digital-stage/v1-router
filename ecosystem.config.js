@@ -43,6 +43,8 @@ module.exports = {
                 "IP": "46.101.149.130",
                 "DOMAIN": "fra.routers.digital-stage.org",
                 "PORT": "3000",
+                "RTC_MIN_PORT": "40000",
+                "RTC_MAX_PORT": "49999",
                 "PATH": ""
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
@@ -55,10 +57,12 @@ module.exports = {
             path: '/node/router',
             env: {
                 "NODE_ENV": "production",
-                "PORT": "3020",
                 "IP": "167.172.168.55",
                 "DOMAIN": "thepanicure.de",
+                "PORT": "3020",
                 "PATH": "",
+                "RTC_MIN_PORT": "40000",
+                "RTC_MAX_PORT": "49999",
                 "DEBUG": "router*",
                 "SSL": "true",
                 "CRT": "/etc/letsencrypt/live/thepanicure.de/fullchain.pem",
@@ -75,9 +79,11 @@ module.exports = {
             path: '/node/router',
             env: {
                 "NODE_ENV": "production",
-                "PORT": "3000",
                 "DOMAIN": "frankfurt.digital-stages.de",
                 "PATH": "",
+                "PORT": "3000",
+                "RTC_MIN_PORT": "40000",
+                "RTC_MAX_PORT": "49999",
                 "DEBUG": "router*",
                 "PUBLIC_PORT": "443"
             },
@@ -95,7 +101,9 @@ module.exports = {
                 "DOMAIN": "amsterdam.digital-stages.de",
                 "PATH": "",
                 "DEBUG": "router*",
-                "PUBLIC_PORT": "443"
+                "PUBLIC_PORT": "443",
+                "RTC_MIN_PORT": "40000",
+                "RTC_MAX_PORT": "49999",
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env amsterdam'
         }
