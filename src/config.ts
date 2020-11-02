@@ -7,7 +7,6 @@ module.exports = {
     router_dist_url: process.env.ROUTER_DIST_URL || "https://routers.digital-stage.org",
     domain: process.env.DOMAIN || "localhost",
     listenPort: process.env.PORT,
-    path: process.env.PATH || "",
     listenIp: "0.0.0.0",
     publicPort: process.env.PUBLIC_PORT || process.env.PORT,
 

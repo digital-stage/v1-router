@@ -56,7 +56,6 @@ export async function createInitialRouter(): Promise<Partial<Router>> {
     const initial = {
         url: config.domain,
         port: config.publicPort,
-        path: config.path,
         ipv4: ipv4,
         ipv6: ipv6,
         availableSlots: cpuCount * config.connectionsPerCpu

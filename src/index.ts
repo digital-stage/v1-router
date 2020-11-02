@@ -84,7 +84,7 @@ async function start() {
 
 start()
     .then(() => {
-        logger.info("Running on " + (config.useSSL === "true" ? "https://" : "http://") + config.domain + ":" + config.listenPort);
+        logger.info("Running on " + (config.useSSL === "true" ? "https://" : "http://") + config.domain + ":" + config.listenPort + "/" + config.path);
         logger.info("Using API at " + config.api_url);
     })
     .catch(error => logger.error(error));
