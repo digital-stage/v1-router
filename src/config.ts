@@ -6,8 +6,9 @@ module.exports = {
     api_url: process.env.API_URL || "https://api.digital-stage.org",
     router_dist_url: process.env.ROUTER_DIST_URL || "https://routers.digital-stage.org",
     domain: process.env.DOMAIN || "localhost",
-    listenIp: "0.0.0.0",
     listenPort: process.env.PORT,
+    path: process.env.PATH || "",
+    listenIp: "0.0.0.0",
     publicPort: process.env.PUBLIC_PORT || process.env.PORT,
 
     mediasoup: {
