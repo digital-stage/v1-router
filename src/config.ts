@@ -6,15 +6,15 @@ module.exports = {
     api_url: process.env.API_URL || "https://api.digital-stage.org",
     router_dist_url: process.env.ROUTER_DIST_URL || "https://routers.digital-stage.org",
     domain: process.env.DOMAIN || "localhost",
-    listenIp: "0.0.0.0",
     listenPort: process.env.PORT,
+    listenIp: "0.0.0.0",
     publicPort: process.env.PUBLIC_PORT || process.env.PORT,
 
     mediasoup: {
         // Worker settings
         worker: {
-            rtcMinPort: 40000,
-            rtcMaxPort: 49999,
+            rtcMinPort: process.env.RTC_MIN_PORT || 40000,
+            rtcMaxPort: process.env.RTC_MAX_PORT || 49999,
             logLevel: "warn",
             logTags: [
                 "info",

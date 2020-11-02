@@ -51,8 +51,8 @@
     "pino-colada": "^2.1.0",
     "process": "^0.11.10",
     "ts-node": "^9.0.0",
-    "tslint": "^6.1.2",
-    "typescript": "^4.0.3"
+    "tslint": "^6.1.3",
+    "typescript": "^4.0.5"
   },
   "author": "tobias.hegemann@googlemail.com",
   "license": "MIT",
