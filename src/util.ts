@@ -3,8 +3,10 @@ import pino from "pino";
 import * as publicIp from "public-ip";
 import os from "os";
 import {GlobalAudioProducerId, GlobalVideoProducerId, Router, RouterId} from "./model/model.server";
+import {config} from "dotenv";
 
-const config = require("./config");
+config();
+
 
 const logger = pino({level: process.env.LOG_LEVEL || 'info'});
 
@@ -15,21 +17,21 @@ function sleep(ms) {
 }
 
 export function getToken(): Promise<string> {
-    return fetch(config.auth_url + "/login", {
+    return fetch(process.env.AUTH_URL + "/login", {
         headers: {
             'Content-Type': 'application/json'
         },
         method: "POST",
         body: JSON.stringify({
-            email: config.email,
-            password: config.password
+            email: process.env.EMAIL,
+            password: process.env.PASSWORD
         })
     })
         .then(result => {
             if (!result.ok) {
                 throw new Error(result.statusText);
             }
-            logger.info("Logged in as " + config.email);
+            logger.info("Logged in as " + process.env.EMAIL);
             return result.json();
         });
 }
@@ -54,11 +56,11 @@ export async function createInitialRouter(): Promise<Partial<Router>> {
     const cpuCount: number = os.cpus().length;
 
     const initial = {
-        url: config.domain,
-        port: config.publicPort,
+        url: process.env.DOMAIN,
+        port: parseInt(process.env.PORT),
         ipv4: ipv4,
         ipv6: ipv6,
-        availableSlots: cpuCount * config.connectionsPerCpu
+        availableSlots: cpuCount * parseInt(process.env.CONNECTIONS_PER_CPU)
     };
     logger.info("Using initial configuration:");
     logger.info(initial);
@@ -74,7 +76,7 @@ export class ProducerAPI {
     }
 
     private fetchProducer(id: GlobalAudioProducerId | GlobalVideoProducerId) {
-        return fetch(config.api_url + "/producers/" + id, {
+        return fetch(process.env.API_URL+ "/producers/" + id, {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: "Bearer " + this.token
@@ -83,7 +85,7 @@ export class ProducerAPI {
             .then(async result => {
                 if (result.ok)
                     return result.json();
-                logger.warn("Got invalid result " + result.status + " from " + config.api_url + "/producers/" + id);
+                logger.warn("Got invalid result " + result.status + " from " + process.env.API_URL + "/producers/" + id);
                 throw new Error(result.statusText);
             });
     }

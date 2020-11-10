@@ -9,13 +9,11 @@ import {Producer} from "mediasoup/lib/Producer";
 import omit from "lodash.omit";
 import {Consumer} from "mediasoup/lib/Consumer";
 import pino from "pino";
-import socketIO from "socket.io";
 import {RtpCapabilities} from "mediasoup/src/RtpParameters";
-import * as https from "https";
-import http from "http";
 import {RtpParameters} from "mediasoup/lib/RtpParameters";
 import {ProducerAPI, RouterList} from "./util";
 import {Router} from "./model/model.server";
+import ITeckosProvider from "teckos/lib/types/ITeckosProvider";
 
 
 const logger = pino({level: process.env.LOG_LEVEL || 'info'});
@@ -78,12 +76,10 @@ const getAvailableRouter = (): MediasoupRouter | null => {
     return null;
 };
 
-const createMediasoupSocket = async (server: https.Server | http.Server, router: Router, routerList: RouterList, producerAPI: ProducerAPI): Promise<socketIO.Server> => {
+const createMediasoupSocket = async (io: ITeckosProvider, router: Router, routerList: RouterList, producerAPI: ProducerAPI): Promise<ITeckosProvider> => {
     await init();
 
-    const io = socketIO(server);
-
-    io.on("connection", (socket: socketIO.Socket) => {
+    io.onConnection((socket) => {
         let transportIds: {} = {};
         let producerIds: {} = {};
         let consumerIds: {} = {};

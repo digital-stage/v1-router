@@ -1,10 +1,5 @@
 module.exports = {
-    email: process.env.EMAIL || 'test@digital-stage.org',
-    password: process.env.PASSWORD || 'testtesttest',
     connectionsPerCpu: 500,
-    auth_url: process.env.AUTH_URL || "https://auth.digital-stage.org",
-    api_url: process.env.API_URL || "https://api.digital-stage.org",
-    router_dist_url: process.env.ROUTER_DIST_URL || "https://routers.digital-stage.org",
     domain: process.env.DOMAIN || "localhost",
     listenPort: process.env.PORT,
     listenIp: "0.0.0.0",
