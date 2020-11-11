@@ -9,7 +9,7 @@ ENV ROOT_PATH=router
 ENV USE_IPV6=true
 
 # Router distribution service
-ENV ROUTER_DIST_URL=http://router-distributor:4020
+ENV ROUTER_DIST_URL=ws://router-distributor:4020
 
 # API service
 ENV API_URL=http://digital-server:4000

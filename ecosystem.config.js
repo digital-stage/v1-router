@@ -32,7 +32,7 @@ module.exports = {
                 "EMAIL": "test@digital-stage.org",
                 "PASSWORD": "testtesttest",
 
-                "ROUTER_DIST_URL": "https://routers.digital-stage.org",
+                "ROUTER_DIST_URL": "wss://routers.digital-stage.org",
                 "RTC_MIN_PORT": "40000",
                 "RTC_MAX_PORT": "49999",
                 "CONNECTIONS_PER_CPU": "5000",
