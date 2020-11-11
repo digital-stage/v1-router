@@ -57,6 +57,7 @@ async function start() {
   });
 
   socket.on('router-ready', (router: Router) => {
+    logger.info('Distributor gave acknowledge - starting routing server now');
     startRouter(token, router, routerList);
   });
 
@@ -71,6 +72,9 @@ async function start() {
   socket.on('disconnect', () => {
     logger.warn('Disconnected from distribution server');
   });
+
+  // Now connect
+  socket.connect();
 }
 
 const port = PORT ? parseInt(PORT, 10) : 4010;

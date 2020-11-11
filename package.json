@@ -10,8 +10,7 @@
     "start": "DEBUG=router* NODE_ENV=production tsc && nodse ./dist/index.js",
     "deploy-frankfurt": "NODE_ENV=production pm2 deploy ecosystem.config.js frankfurt --force",
     "deploy-amsterdam": "NODE_ENV=production pm2 deploy ecosystem.config.js amsterdam --force",
-    "deploy-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production --force",
-    "reload-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production exec 'pm2 reload router'"
+    "deploy-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production --force"
   },
   "repository": {
     "type": "git",
