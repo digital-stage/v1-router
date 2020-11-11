@@ -8,21 +8,6 @@ module.exports = {
         autorestart: true,
         watch: false,
         max_memory_restart: '3G',
-        env: {
-            NODE_ENV: 'development'
-        },
-        env_production: {
-            NODE_ENV: 'production'
-        },
-        env_production2: {
-            NODE_ENV: 'production'
-        },
-        env_frankfurt: {
-            NODE_ENV: 'production'
-        },
-        env_amsterdam: {
-            NODE_ENV: 'production'
-        }
     }],
 
     deploy: {
@@ -48,28 +33,6 @@ module.exports = {
                 "PATH": ""
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
-        },
-        production2: {
-            user: 'node',
-            host: 'ocean-node',
-            ref: 'origin/master',
-            repo: "https://github.com/digital-stage/router.git",
-            path: '/node/router',
-            env: {
-                "NODE_ENV": "production",
-                "IP": "167.172.168.55",
-                "DOMAIN": "thepanicure.de",
-                "PORT": "3020",
-                "PATH": "",
-                "RTC_MIN_PORT": "40000",
-                "RTC_MAX_PORT": "49999",
-                "DEBUG": "router*",
-                "SSL": "true",
-                "CRT": "/etc/letsencrypt/live/thepanicure.de/fullchain.pem",
-                "KEY": "/etc/letsencrypt/live/thepanicure.de/privkey.pem",
-                "CA": "/etc/letsencrypt/live/thepanicure.de/chain.pem"
-            },
-            'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production2'
         },
         frankfurt: {
             user: 'tobias',
