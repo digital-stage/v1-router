@@ -1,14 +1,24 @@
 FROM node:12.19.0-buster AS build
 
-ENV USE_SSL=false
-ENV USE_IPV6=true
-ENV AUTH_URL=http://auth-server:5000
+# Service description
+ENV DOMAIN=localhost
 ENV PORT=4010
+ENV ROOT_PATH=router
+ENV USE_IPV6=true
+
+# Router distribution service
+ENV ROUTER_DIST_URL=http://router-distributor:4020
+
+# API service
+ENV API_URL=http://digital-server:4000
+
+# Auth service
+ENV AUTH_URL=http://auth-server:5000
+
+# Settings for mediasoup
 ENV RTC_MIN_PORT=40000
 ENV RTC_MAX_PORT=40100
-ENV ROUTER_DIST_URL=http://router-distributor:4020
-ENV API_URL=http://digital-server:4000
-ENV IP=127.0.0.1
+ENV LISTEN_IP=127.0.0.1
 
 COPY package.json ./
 COPY tsconfig.json ./

@@ -14,12 +14,15 @@ import {RtpParameters} from "mediasoup/lib/RtpParameters";
 import {ProducerAPI, RouterList} from "./util";
 import {Router} from "./model/model.server";
 import ITeckosProvider from "teckos/lib/types/ITeckosProvider";
+import {config} from "dotenv";
 
+config();
 
 const logger = pino({level: process.env.LOG_LEVEL || 'info'});
 
-const config = require("./config");
-const connectionsPerCpu = 500;
+const mediasoupConfig = require("./config");
+
+const connectionsPerCpu: number = parseInt(process.env.CONNECTIONS_PER_CPU);
 
 //TODO: Export verify token into cloud functions and use only realtime database client instead of admin sdk
 
@@ -53,13 +56,13 @@ let localConsumers: {
 
 const init = async () => {
     const cpuCount: number = os.cpus().length;
-    const mediaCodecs = config.mediasoup.router.mediaCodecs;
+    const mediaCodecs = mediasoupConfig.router.mediaCodecs;
     for (let i = 0; i < cpuCount; i++) {
         const worker: Worker = await mediasoup.createWorker({
-            logLevel: config.mediasoup.worker.logLevel,
-            logTags: config.mediasoup.worker.logTags,
-            rtcMinPort: config.mediasoup.worker.rtcMinPort,
-            rtcMaxPort: config.mediasoup.worker.rtcMaxPort
+            logLevel: mediasoupConfig.worker.logLevel,
+            logTags: mediasoupConfig.worker.logTags,
+            rtcMinPort: mediasoupConfig.worker.rtcMinPort,
+            rtcMaxPort: mediasoupConfig.worker.rtcMaxPort
         });
         const workerRouter: MediasoupRouter = await worker.createRouter({mediaCodecs});
         mediasoupRouters.push({router: workerRouter, numConnections: 0});
@@ -106,11 +109,11 @@ const createMediasoupSocket = async (io: ITeckosProvider, router: Router, router
             }
             return router.createWebRtcTransport({
                 preferTcp: false,
-                listenIps: config.mediasoup.webRtcTransport.listenIps,
+                listenIps: mediasoupConfig.webRtcTransport.listenIps,
                 enableUdp: true,
                 enableTcp: true,
                 preferUdp: true,
-                initialAvailableOutgoingBitrate: config.mediasoup.webRtcTransport.initialAvailableOutgoingBitrate
+                initialAvailableOutgoingBitrate: mediasoupConfig.webRtcTransport.initialAvailableOutgoingBitrate
             }).then((transport: WebRtcTransport) => {
                 transports.webrtc[transport.id] = transport;
                 transportIds[transport.id] = true;
