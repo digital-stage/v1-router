@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon --watch './src/**/*.ts' --exec 'ts-node' ./src/index.ts | pino-colada",
+    "lint": "npx eslint ./src --ext .js,.ts",
     "build": "NODE_ENV=production tsc",
     "start": "DEBUG=router* NODE_ENV=production tsc && nodse ./dist/index.js",
     "deploy-frankfurt": "NODE_ENV=production pm2 deploy ecosystem.config.js frankfurt --force",
@@ -34,7 +35,7 @@
     "pino": "^6.7.0",
     "public-ip": "4.0.2",
     "teckos": "0.0.3",
-    "teckos-node-client": "0.0.3",
+    "teckos-node-client": "0.0.4",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v18.10.0"
   },
   "devDependencies": {
@@ -42,6 +43,10 @@
     "@types/node": "^14.14.7",
     "@types/node-fetch": "^2.5.7",
     "@types/pino": "^6.3.3",
+    "@typescript-eslint/eslint-plugin": "^4.7.0",
+    "eslint": "^7.13.0",
+    "eslint-config-airbnb-typescript": "^12.0.0",
+    "eslint-plugin-import": "^2.22.1",
     "nodemon": "^2.0.6",
     "pino-colada": "^2.1.0",
     "process": "^0.11.10",

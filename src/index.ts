@@ -1,34 +1,33 @@
-import pino from "pino";
-import createMediasoupSocket from "./mediasoup";
-import {createInitialRouter, getToken, ProducerAPI, RouterList} from "./util";
-import {Router, RouterId} from "./model/model.server";
-import {TeckosClientWithJWT} from "teckos-node-client";
-import {UWSProvider} from "teckos";
+import pino from 'pino';
+import { TeckosClientWithJWT } from 'teckos-node-client';
+import { UWSProvider } from 'teckos';
 import * as uWS from 'uWebSockets.js';
-import {config} from "dotenv";
+import { config } from 'dotenv';
+import { Router, RouterId } from './model/model.server';
+import {
+  createInitialRouter, getToken,
+} from './util';
+import createMediasoupSocket from './mediasoup';
+import RouterList from './RouterList';
+import ProducerAPI from './ProducerAPI';
 
 config();
+const {
+  ROUTER_DIST_URL, LOG_LEVEL, PORT, DOMAIN, ROOT_PATH, API_URL,
+} = process.env;
 
-const {ROUTER_DIST_URL, LOG_LEVEL, PORT, DOMAIN, ROOT_PATH, API_URL} = process.env;
-
-const logger = pino({level: LOG_LEVEL || 'info'});
-
+const logger = pino({ level: LOG_LEVEL || 'info' });
 
 const uws = uWS.App();
 const io = new UWSProvider(uws);
-let running = true;
 
-uws.get('/beat', function(res) {
+uws.get('/beat', (res) => {
   res.end('Boom!');
 });
 
 function startRouter(token: string, router: Router, routerList: RouterList) {
   const producerAPI = new ProducerAPI(token);
   return createMediasoupSocket(io, router, routerList, producerAPI);
-}
-
-function stopRouter() {
-  running = false;
 }
 
 async function start() {
@@ -42,48 +41,46 @@ async function start() {
 
   // Now use token to establish connection to router distribution service
   const socket = new TeckosClientWithJWT(ROUTER_DIST_URL, token, {
-    router: initialRouter
+    router: initialRouter,
+  });
+
+  socket.emit('router-added', (router: Router) => {
+    routerList.add(router);
+  });
+
+  socket.on('router-changed', (change: Partial<Router>) => {
+    routerList.update(change);
+  });
+
+  socket.on('router-removed', (id: RouterId) => {
+    routerList.remove(id);
+  });
+
+  socket.on('router-ready', (router: Router) => {
+    startRouter(token, router, routerList);
   });
 
   socket.on('connect', () => {
-    logger.info("Connected to distribution server");
-
-    socket.emit("router-added", (router: Router) => {
-      routerList.add(router);
-    });
-
-    socket.on("router-changed", (change: Partial<Router>) => {
-      routerList.update(change);
-    });
-
-    socket.on("router-removed", (id: RouterId) => {
-      routerList.remove(id);
-    });
-
-    socket.on("ready", (router: Router) => {
-      // Set global router
-      return startRouter(token, router, routerList);
-    });
+    logger.info('Connected to distribution server');
   });
 
-  socket.on("reconnected", () => {
-    logger.warn("Reconnected to distribution server");
-  })
+  socket.on('reconnected', () => {
+    logger.warn('Reconnected to distribution server');
+  });
 
   socket.on('disconnect', () => {
-    logger.warn("Disconnected from distribution server");
-    return stopRouter();
-  })
+    logger.warn('Disconnected from distribution server');
+  });
 }
 
 const port = PORT ? parseInt(PORT, 10) : 4010;
 start()
   .then(() => io.listen(port))
   .then(() => {
-    logger.info("Running on " + DOMAIN + ":" + port + "/" + (ROOT_PATH ? ROOT_PATH : ""));
-    logger.info("Using API at " + API_URL);
-    logger.info("Using DISTRIBUTION SERVICE at " + ROUTER_DIST_URL);
+    logger.info(`Running on ${DOMAIN}:${port}/${ROOT_PATH || ''}`);
+    logger.info(`Using API at ${API_URL}`);
+    logger.info(`Using DISTRIBUTION SERVICE at ${ROUTER_DIST_URL}`);
   })
-  .catch(error => logger.error(error));
+  .catch((error) => logger.error(error));
 
 module.exports = io;
