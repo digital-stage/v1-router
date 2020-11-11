@@ -3,6 +3,8 @@ FROM node:12.19.0-buster AS build
 # Service description
 ENV DOMAIN=localhost
 ENV PORT=4010
+# The public port may differ when using nginx proxy
+ENV PUBLIC_PORT=4010
 ENV ROOT_PATH=router
 ENV USE_IPV6=true
 

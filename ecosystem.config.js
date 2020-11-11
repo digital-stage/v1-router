@@ -19,18 +19,23 @@ module.exports = {
             path: '/node/router',
             env: {
                 "NODE_ENV": "production",
+
+                "DOMAIN": "fra.routers.digital-stage.org",
+                "PORT": "3000",
+                "PUBLIC_PORT": "443",
+                "ROOT_PATH": "",
+                "USE_IPV6": "true",
+
+                "API_URL": "https://api.digital-stage.org",
+
                 "AUTH_URL": "https://auth.digital-stage.org",
                 "EMAIL": "test@digital-stage.org",
                 "PASSWORD": "testtesttest",
-                "API_URL": "https://api.digital-stage.org",
+
                 "ROUTER_DIST_URL": "https://routers.digital-stage.org",
-                "PUBLIC_PORT": "443",
-                "IP": "46.101.149.130",
-                "DOMAIN": "fra.routers.digital-stage.org",
-                "PORT": "3000",
                 "RTC_MIN_PORT": "40000",
                 "RTC_MAX_PORT": "49999",
-                "PATH": ""
+                "CONNECTIONS_PER_CPU": "5000",
             },
             'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production'
         },

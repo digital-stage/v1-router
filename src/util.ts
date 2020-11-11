@@ -10,7 +10,7 @@ import {
 config();
 
 const {
-  AUTH_URL, USE_IPV6, DOMAIN, PORT, CONNECTIONS_PER_CPU, LOG_LEVEL, EMAIL, PASSWORD,
+  AUTH_URL, USE_IPV6, DOMAIN, PUBLIC_PORT, CONNECTIONS_PER_CPU, LOG_LEVEL, EMAIL, PASSWORD,
 } = process.env;
 
 const logger = pino({ level: LOG_LEVEL || 'info' });
@@ -56,7 +56,7 @@ export async function createInitialRouter(): Promise<Partial<Router>> {
 
   const initial = {
     url: DOMAIN,
-    port: parseInt(PORT, 10),
+    port: parseInt(PUBLIC_PORT, 10),
     ipv4,
     ipv6,
     availableSlots: cpuCount * parseInt(CONNECTIONS_PER_CPU, 10),
