@@ -3,6 +3,7 @@ import { TeckosClientWithJWT } from 'teckos-node-client';
 import { UWSProvider } from 'teckos';
 import * as uWS from 'uWebSockets.js';
 import { config } from 'dotenv';
+import ITeckosProvider from 'teckos/lib/types/ITeckosProvider';
 import { Router, RouterId } from './model/model.server';
 import {
   createInitialRouter, getToken,
@@ -78,7 +79,7 @@ const registerRouter = (token: string) => createInitialRouter()
  * @param token valid JWT
  * @param router declaration received from router distribution service
  */
-const startRouter = (token: string, router: Router) => {
+const startRouter = (token: string, router: Router): Promise<ITeckosProvider> => {
   const producerAPI = new ProducerAPI(token);
   return createMediasoupSocket(io, router, routerList, producerAPI);
 };
@@ -93,8 +94,9 @@ getToken()
   // Now register this router
   .then((token) => registerRouter(token)
     .then((router) => startRouter(token, router)))
+  .then(() => io.listen(parseInt(PORT, 10)))
   .then(() => {
-    logger.info(`Running on ${DOMAIN}:${port}/${ROOT_PATH || ''}`);
+    logger.info(`Listening on ${DOMAIN}:${port}/${ROOT_PATH || ''}`);
   })
   .catch((error) => {
     logger.error(error);
