@@ -92,6 +92,7 @@ const createMediasoupSocket = async (
   await init();
 
   io.onConnection((socket) => {
+    logger.trace(`New client connection: ${socket.id}`);
     let transportIds: {} = {};
     let producerIds: {} = {};
     let consumerIds: {} = {};
@@ -103,6 +104,7 @@ const createMediasoupSocket = async (
           logger.error('Router is not ready yet');
           return callback('Router is not ready yet');
         }
+        logger.trace('Sending RTP Capabilities to client');
         return callback(undefined, mediasoupRouters[0].router.rtpCapabilities);
       });
 

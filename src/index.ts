@@ -25,66 +25,77 @@ uws.get('/beat', (res) => {
   res.end('Boom!');
 });
 
-function startRouter(token: string, router: Router, routerList: RouterList) {
+const routerList = new RouterList();
+
+/**
+ * Collection initial informations about this router
+ * and register with it by the router distribution service
+ * @param token valid JWT
+ */
+const registerRouter = (token: string) => createInitialRouter()
+  .then((initialRouter) => new Promise<Router>((resolve, reject) => {
+    // Now use token to establish connection to router distribution service
+    const socket = new TeckosClientWithJWT(ROUTER_DIST_URL, token, {
+      router: initialRouter,
+    });
+
+    socket.emit('router-added', (router: Router) => {
+      routerList.add(router);
+    });
+
+    socket.on('router-changed', (change: Partial<Router>) => {
+      routerList.update(change);
+    });
+
+    socket.on('router-removed', (id: RouterId) => {
+      routerList.remove(id);
+    });
+
+    socket.on('router-ready', (router: Router) => {
+      logger.info('Distributor gave acknowledge - starting routing server now');
+      resolve(router);
+    });
+
+    socket.on('connect', () => {
+      logger.info('Connected to distribution server');
+    });
+
+    socket.on('reconnected', () => {
+      logger.warn('Reconnected to distribution server');
+    });
+
+    socket.on('disconnect', () => {
+      logger.warn('Disconnected from distribution server');
+      reject(new Error('Distribution server closed connection'));
+    });
+
+    // Now connect
+    socket.connect();
+  }));
+
+/**
+ * Start this router
+ * @param token valid JWT
+ * @param router declaration received from router distribution service
+ */
+const startRouter = (token: string, router: Router) => {
   const producerAPI = new ProducerAPI(token);
   return createMediasoupSocket(io, router, routerList, producerAPI);
-}
-
-async function start() {
-  // First get token for this router
-  const token = await getToken();
-
-  // Create local router
-  const initialRouter: Partial<Router> = await createInitialRouter();
-
-  const routerList = new RouterList();
-
-  // Now use token to establish connection to router distribution service
-  const socket = new TeckosClientWithJWT(ROUTER_DIST_URL, token, {
-    router: initialRouter,
-  });
-
-  socket.emit('router-added', (router: Router) => {
-    routerList.add(router);
-  });
-
-  socket.on('router-changed', (change: Partial<Router>) => {
-    routerList.update(change);
-  });
-
-  socket.on('router-removed', (id: RouterId) => {
-    routerList.remove(id);
-  });
-
-  socket.on('router-ready', (router: Router) => {
-    logger.info('Distributor gave acknowledge - starting routing server now');
-    startRouter(token, router, routerList);
-  });
-
-  socket.on('connect', () => {
-    logger.info('Connected to distribution server');
-  });
-
-  socket.on('reconnected', () => {
-    logger.warn('Reconnected to distribution server');
-  });
-
-  socket.on('disconnect', () => {
-    logger.warn('Disconnected from distribution server');
-  });
-
-  // Now connect
-  socket.connect();
-}
+};
 
 const port = PORT ? parseInt(PORT, 10) : 4010;
-start()
-  .then(() => io.listen(port))
+
+logger.info(`Using API at ${API_URL}`);
+logger.info(`Using DISTRIBUTION SERVICE at ${ROUTER_DIST_URL}`);
+
+// First get valid token
+getToken()
+  // Now register this router
+  .then((token) => registerRouter(token)
+    .then((router) => startRouter(token, router)))
   .then(() => {
     logger.info(`Running on ${DOMAIN}:${port}/${ROOT_PATH || ''}`);
-    logger.info(`Using API at ${API_URL}`);
-    logger.info(`Using DISTRIBUTION SERVICE at ${ROUTER_DIST_URL}`);
   })
-  .catch((error) => logger.error(error));
-
-module.exports = io;
+  .catch((error) => {
+    logger.error(error);
+  });
