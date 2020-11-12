@@ -97,8 +97,11 @@ const createMediasoupSocket = async (
     let producerIds: {} = {};
     let consumerIds: {} = {};
 
+    socket.on('HELLO', () => logger.trace('got greeting'));
+
     socket.on(RouterRequests.GetRTPCapabilities,
       (payload: {}, callback: (error: string, rtpCapabilities?: RtpCapabilities) => void) => {
+        logger.info('HEEY');
         logger.trace(RouterRequests.GetRTPCapabilities);
         if (!initialized) {
           logger.error('Router is not ready yet');

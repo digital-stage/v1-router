@@ -4,7 +4,7 @@
   "description": "Router microservice for Digital Stage Platform",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --watch './src/**/*.ts' --exec 'ts-node' ./src/index.ts | pino-colada",
+    "dev": "DEBUG=* nodemon --watch './src/**/*.ts' --exec 'ts-node' ./src/index.ts | pino-colada",
     "lint": "npx eslint ./src --ext .js,.ts",
     "build": "NODE_ENV=production tsc",
     "start": "DEBUG=router* NODE_ENV=production tsc && nodse ./dist/index.js",
@@ -29,11 +29,11 @@
     "https": "^1.0.0",
     "lodash.omit": "^4.5.0",
     "mediasoup": "latest",
-    "node": "^15.0.1",
+    "node": "^15.2.0",
     "node-fetch": "^2.6.1",
     "pino": "^6.7.0",
     "public-ip": "4.0.2",
-    "teckos": "0.0.3",
+    "teckos": "0.0.5",
     "teckos-node-client": "0.0.4",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v18.10.0"
   },
