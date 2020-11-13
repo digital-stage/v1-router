@@ -1,9 +1,9 @@
-import pino from 'pino';
 import { TeckosClientWithJWT } from 'teckos-node-client';
 import { UWSProvider } from 'teckos';
 import * as uWS from 'uWebSockets.js';
 import { config } from 'dotenv';
 import ITeckosProvider from 'teckos/lib/types/ITeckosProvider';
+import debug from 'debug';
 import { Router, RouterId } from './model/model.server';
 import {
   createInitialRouter, getToken,
@@ -14,10 +14,12 @@ import ProducerAPI from './ProducerAPI';
 
 config();
 const {
-  ROUTER_DIST_URL, LOG_LEVEL, PORT, DOMAIN, ROOT_PATH, API_URL,
+  ROUTER_DIST_URL, PORT, DOMAIN, ROOT_PATH, API_URL,
 } = process.env;
 
-const logger = pino({ level: LOG_LEVEL || 'info' });
+const info = debug('router:info');
+const warn = debug('router:warn');
+const error = debug('router:error');
 
 const uws = uWS.App();
 const io = new UWSProvider(uws);
@@ -53,20 +55,20 @@ const registerRouter = (token: string) => createInitialRouter()
     });
 
     socket.on('router-ready', (router: Router) => {
-      logger.info('Distributor gave acknowledge - starting routing server now');
+      info('Distributor gave acknowledge - starting routing server now');
       resolve(router);
     });
 
     socket.on('connect', () => {
-      logger.info('Connected to distribution server');
+      info('Connected to distribution server');
     });
 
     socket.on('reconnected', () => {
-      logger.warn('Reconnected to distribution server');
+      warn('Reconnected to distribution server');
     });
 
     socket.on('disconnect', () => {
-      logger.warn('Disconnected from distribution server');
+      warn('Disconnected from distribution server');
       reject(new Error('Distribution server closed connection'));
     });
 
@@ -86,8 +88,8 @@ const startRouter = (token: string, router: Router): Promise<ITeckosProvider> =>
 
 const port = PORT ? parseInt(PORT, 10) : 4010;
 
-logger.info(`Using API at ${API_URL}`);
-logger.info(`Using DISTRIBUTION SERVICE at ${ROUTER_DIST_URL}`);
+info(`Using API at ${API_URL}`);
+info(`Using DISTRIBUTION SERVICE at ${ROUTER_DIST_URL}`);
 
 // First get valid token
 getToken()
@@ -96,8 +98,8 @@ getToken()
     .then((router) => startRouter(token, router)))
   .then(() => io.listen(parseInt(PORT, 10)))
   .then(() => {
-    logger.info(`Listening on ${DOMAIN}:${port}/${ROOT_PATH || ''}`);
+    info(`Listening on ${DOMAIN}:${port}/${ROOT_PATH || ''}`);
   })
-  .catch((error) => {
-    logger.error(error);
+  .catch((initError) => {
+    error(initError);
   });
