@@ -422,8 +422,6 @@ const createMediasoupSocket = async (
             }
           });
           transportIds = {};
-          trace('Transports are now: ');
-          trace(transports);
         });
       } catch (socketError) {
         socket.disconnect();

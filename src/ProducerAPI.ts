@@ -51,9 +51,7 @@ class ProducerAPI {
               .then((token) => {
                 this.token = token;
               })
-              .then(() => {
-                this.getProducerWithRetries(id, (retries - 1));
-              });
+              .then(() => this.getProducerWithRetries(id, (retries - 1)));
           }
         }
         throw error;
