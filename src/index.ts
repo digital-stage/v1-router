@@ -28,7 +28,7 @@ uws.get('/beat', (res) => {
   res.end('Boom!');
 });
 
-uws.get('ping', (res) => {
+uws.get('/ping', (res) => {
   res
     .writeHeader('Content-Type', 'image/svg+xml')
     .end('<svg height="200" width="580" xmlns="http://www.w3.org/2000/svg">\n'
