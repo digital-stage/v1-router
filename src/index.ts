@@ -28,6 +28,15 @@ uws.get('/beat', (res) => {
   res.end('Boom!');
 });
 
+uws.get('ping', (res) => {
+  res
+    .writeHeader('Content-Type', 'image/svg+xml')
+    .end('<svg height="200" width="580" xmlns="http://www.w3.org/2000/svg">\n'
+    + '    <path d="m-1-1h582v402h-582z"/>\n'
+    + '    <path d="m223 148.453125h71v65h-71z" stroke="#000" stroke-width="1.5"/>\n'
+    + '</svg>');
+});
+
 const routerList = new RouterList();
 
 /**
