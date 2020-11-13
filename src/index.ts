@@ -32,9 +32,9 @@ uws.get('/ping', (res) => {
   res
     .writeHeader('Content-Type', 'image/svg+xml')
     .end('<svg height="200" width="580" xmlns="http://www.w3.org/2000/svg">\n'
-    + '    <path d="m-1-1h582v402h-582z"/>\n'
-    + '    <path d="m223 148.453125h71v65h-71z" stroke="#000" stroke-width="1.5"/>\n'
-    + '</svg>');
+      + '    <path d="m-1-1h582v402h-582z"/>\n'
+      + '    <path d="m223 148.453125h71v65h-71z" stroke="#000" stroke-width="1.5"/>\n'
+      + '</svg>');
 });
 
 const routerList = new RouterList();
@@ -47,7 +47,7 @@ const routerList = new RouterList();
 const registerRouter = (token: string) => createInitialRouter()
   .then((initialRouter) => new Promise<Router>((resolve, reject) => {
     // Now use token to establish connection to router distribution service
-    const socket = new TeckosClientWithJWT(ROUTER_DIST_URL, token, {
+    const socket = new TeckosClientWithJWT(ROUTER_DIST_URL, {}, token, {
       router: initialRouter,
     });
 
