@@ -7,7 +7,7 @@
     "dev": "DEBUG=teckos:*,router:* nodemon --watch './src/**/*.ts' --exec 'ts-node' ./src/index.ts",
     "lint": "npx eslint ./src --ext .js,.ts",
     "build": "NODE_ENV=production tsc",
-    "start": "DEBUG=router* NODE_ENV=production tsc && nodse ./dist/index.js",
+    "start": "DEBUG=* NODE_ENV=production tsc && node ./dist/index.js",
     "deploy-frankfurt": "NODE_ENV=production pm2 deploy ecosystem.config.js frankfurt --force",
     "deploy-amsterdam": "NODE_ENV=production pm2 deploy ecosystem.config.js amsterdam --force",
     "deploy-production": "NODE_ENV=production pm2 deploy ecosystem.config.js production --force"
@@ -33,7 +33,7 @@
     "node-fetch": "^2.6.1",
     "public-ip": "4.0.2",
     "teckos": "0.0.8",
-    "teckos-client": "0.0.10",
+    "teckos-client": "0.0.11",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v18.10.0",
     "ws": "^7.4.0"
   },
