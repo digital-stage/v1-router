@@ -33,7 +33,7 @@
     "node": "^15.2.0",
     "node-fetch": "^2.6.1",
     "public-ip": "4.0.2",
-    "teckos": "0.0.6",
+    "teckos": "0.0.7",
     "teckos-node-client": "0.0.5",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v18.10.0"
   },
