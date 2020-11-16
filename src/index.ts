@@ -1,4 +1,4 @@
-import { TeckosClientWithJWT } from 'teckos-node-client';
+import { TeckosClientWithJWT } from 'teckos-client';
 import { UWSProvider } from 'teckos';
 import * as uWS from 'uWebSockets.js';
 import { config } from 'dotenv';
