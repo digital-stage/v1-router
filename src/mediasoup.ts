@@ -296,14 +296,10 @@ const createMediasoupSocket = async (
           }
           return producerAPI.getProducer(payload.globalProducerId)
             .then(async (producer) => {
-              trace('fetched!');
               if (producer) {
-                trace('Got valid producer');
                 if (producer.routerId === router._id) {
-                  trace('This is the right router');
                   // This is the right router
                   if (localProducers[producer.routerProducerId]) {
-                    trace('Found assigned producer');
                     const transport: WebRtcTransport = transports.webrtc[payload.transportId];
                     if (!transport) {
                       return callback('Transport not found');
