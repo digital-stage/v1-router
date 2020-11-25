@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import debug from 'debug';
-import { GlobalAudioProducerId, GlobalVideoProducerId } from './model/model.server';
+import { GlobalAudioProducerId, GlobalProducer, GlobalVideoProducerId } from './model/model.server';
 import { getToken } from './util';
 
 const {
@@ -40,7 +40,7 @@ class ProducerAPI {
   private getProducerWithRetries(
     id: GlobalAudioProducerId | GlobalVideoProducerId,
     retries: number = 10,
-  ) {
+  ): Promise<GlobalProducer> {
     return this.fetchProducer(id)
       .catch((error) => {
         if (retries > 0) {
@@ -58,7 +58,7 @@ class ProducerAPI {
       });
   }
 
-  getProducer(id: GlobalAudioProducerId | GlobalVideoProducerId) {
+  getProducer(id: GlobalAudioProducerId | GlobalVideoProducerId): Promise<GlobalProducer> {
     return this.getProducerWithRetries(id, 10);
   }
 }

@@ -315,8 +315,7 @@ const createMediasoupSocket = async (
                     consumer.observer.on('close', () => {
                       trace(`consumer closed: ${consumer.id}`);
                     });
-                    trace(payload.rtpCapabilities);
-                    trace(`Created consumer ${consumer.id} for ${producer.kind} producer ${producer.routerProducerId} and consumer is: ${consumer.paused ? 'paused' : 'running'}`);
+                    trace(`Created consumer ${consumer.id} for producer ${producer.routerProducerId} and consumer is: ${consumer.paused ? 'paused' : 'running'}`);
                     localConsumers[consumer.id] = consumer;
                     consumerIds[consumer.id] = true;
                     return callback(null, {

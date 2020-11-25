@@ -143,7 +143,7 @@ export interface Track {
 }
 
 // WEBRTC specific
-interface GlobalProducer {
+export interface GlobalProducer {
   deviceId: DeviceId; // <-- RELATION
 
   routerId: RouterId;
