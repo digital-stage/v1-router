@@ -225,7 +225,7 @@ const createMediasoupSocket = async (
               producer.on('transportclose', () => {
                 trace(`transport closed so producer closed: ${producer.id}`);
               });
-              trace(`Created producer ${producer.id} and producer is: ${producer.paused ? 'paused' : 'running'}`);
+              trace(`Created ${payload.kind} producer ${producer.id} and producer is: ${producer.paused ? 'paused' : 'running'}`);
               localProducers[producer.id] = producer;
               producerIds[producer.id] = true;
               return callback(null, {
@@ -243,6 +243,7 @@ const createMediasoupSocket = async (
             }
             const producer: Producer = localProducers[id];
             if (producer) {
+              trace(`Pausing ${producer.kind} producer ${id}`);
               return producer.pause()
                 .then(() => callback(null));
             }
@@ -259,6 +260,7 @@ const createMediasoupSocket = async (
             }
             const producer: Producer = localProducers[id];
             if (producer) {
+              trace(`Resuming ${producer.kind} producer ${id}`);
               return producer.resume()
                 .then(() => callback(null));
             }
@@ -275,6 +277,7 @@ const createMediasoupSocket = async (
             }
             const producer: Producer = localProducers[id];
             if (producer) {
+              trace(`Closing ${producer.kind} producer ${id}`);
               producer.close();
               localProducers = omit(localProducers, producer.id);
               delete producerIds[producer.id];
@@ -312,7 +315,8 @@ const createMediasoupSocket = async (
                     consumer.observer.on('close', () => {
                       trace(`consumer closed: ${consumer.id}`);
                     });
-                    trace(`Created consumer and consumer is: ${consumer.paused ? 'paused' : 'running'}`);
+                    trace(payload.rtpCapabilities);
+                    trace(`Created consumer ${consumer.id} for ${producer.kind} producer ${producer.routerProducerId} and consumer is: ${consumer.paused ? 'paused' : 'running'}`);
                     localConsumers[consumer.id] = consumer;
                     consumerIds[consumer.id] = true;
                     return callback(null, {
@@ -352,6 +356,7 @@ const createMediasoupSocket = async (
             }
             const consumer: Consumer = localConsumers[id];
             if (consumer) {
+              trace(`Pausing consuer ${consumer.id}`);
               return consumer.pause().then(() => callback(null));
             }
             warn(`Could not find consumer: ${id}`);
@@ -367,6 +372,7 @@ const createMediasoupSocket = async (
             }
             const consumer: Consumer = localConsumers[id];
             if (consumer) {
+              trace(`Resuming consuer ${consumer.id}`);
               return consumer.resume().then(() => callback(null));
             }
             warn(`Could not find consumer: ${id}`);
@@ -382,6 +388,7 @@ const createMediasoupSocket = async (
             }
             const consumer: Consumer = localConsumers[id];
             if (consumer) {
+              trace(`Closing consuer ${consumer.id}`);
               consumer.close();
               localConsumers = omit(localConsumers, id);
               delete consumerIds[consumer.id];
