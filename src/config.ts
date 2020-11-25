@@ -77,7 +77,7 @@ module.exports = {
   webRtcTransport: {
     listenIps: [
       {
-        ip: process.env.NODE_ENV === 'production' ? process.env.LISTEN_IP : '127.0.0.1',
+        ip: process.env.LISTEN_IP || '127.0.0.1',
         announcedIp: null,
       },
     ],
