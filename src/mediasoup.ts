@@ -21,7 +21,6 @@ config();
 const { CONNECTIONS_PER_CPU } = process.env;
 
 const log = debug('router:mediasoup');
-const info = log.extend('info');
 const warn = log.extend('warn');
 const error = log.extend('error');
 const trace = log.extend('trace');
@@ -226,7 +225,7 @@ const createMediasoupSocket = async (
               producer.on('transportclose', () => {
                 trace(`transport closed so producer closed: ${producer.id}`);
               });
-              debug(`Created producer ${producer.id} and producer is: ${producer.paused ? 'paused' : 'running'}`);
+              trace(`Created producer ${producer.id} and producer is: ${producer.paused ? 'paused' : 'running'}`);
               localProducers[producer.id] = producer;
               producerIds[producer.id] = true;
               return callback(null, {
@@ -317,7 +316,7 @@ const createMediasoupSocket = async (
                     consumer.observer.on('close', () => {
                       trace(`consumer closed: ${consumer.id}`);
                     });
-                    debug(`Created consumer and consumer is: ${consumer.paused ? 'paused' : 'running'}`);
+                    trace(`Created consumer and consumer is: ${consumer.paused ? 'paused' : 'running'}`);
                     localConsumers[consumer.id] = consumer;
                     consumerIds[consumer.id] = true;
                     return callback(null, {
@@ -397,10 +396,10 @@ const createMediasoupSocket = async (
           });
 
         socket.on('disconnect', () => {
-          debug('Client disconnected, cleaning up');
+          trace('Client disconnected, cleaning up');
           Object.keys(consumerIds).forEach((key) => {
             if (consumerIds[key]) {
-              debug(`Removing consumer ${key}`);
+              trace(`Removing consumer ${key}`);
               localConsumers[key].close();
               delete localConsumers[key];
             }
@@ -408,7 +407,7 @@ const createMediasoupSocket = async (
           consumerIds = {};
           Object.keys(producerIds).forEach((key) => {
             if (producerIds[key]) {
-              debug(`Removing producer ${key}`);
+              trace(`Removing producer ${key}`);
               localProducers[key].close();
               delete localProducers[key];
             }
@@ -416,7 +415,7 @@ const createMediasoupSocket = async (
           producerIds = {};
           Object.keys(transportIds).forEach((key) => {
             if (transportIds[key]) {
-              debug(`Removing transport ${key}`);
+              trace(`Removing transport ${key}`);
               transports.webrtc[key].close();
               delete transports.webrtc[key];
             }
