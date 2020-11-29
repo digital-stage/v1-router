@@ -371,7 +371,7 @@ const createMediasoupSocket = async (
             }
             const consumer: Consumer = localConsumers[id];
             if (consumer) {
-              trace(`Resuming consuer ${consumer.id}`);
+              trace(`Resuming consumer ${consumer.id}`);
               return consumer.resume().then(() => callback(null));
             }
             warn(`Could not find consumer: ${id}`);

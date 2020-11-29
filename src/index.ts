@@ -45,7 +45,7 @@ const routerList = new RouterList();
  * @param token valid JWT
  */
 const registerRouter = (token: string) => createInitialRouter()
-  .then((initialRouter) => new Promise<Router>((resolve, reject) => {
+  .then((initialRouter) => new Promise<Router>((resolve) => {
     // Now use token to establish connection to router distribution service
     const socket = new TeckosClientWithJWT(ROUTER_DIST_URL, {}, token, {
       router: initialRouter,
@@ -78,7 +78,8 @@ const registerRouter = (token: string) => createInitialRouter()
 
     socket.on('disconnect', () => {
       warn('Disconnected from distribution server');
-      reject(new Error('Distribution server closed connection'));
+      error("Exit program to let forever restart - yeah it's a workaround ... ;) ");
+      process.exit();
     });
 
     // Now connect
@@ -111,4 +112,5 @@ getToken()
   })
   .catch((initError) => {
     error(initError);
+    process.exit();
   });
