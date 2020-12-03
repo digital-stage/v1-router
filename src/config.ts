@@ -27,18 +27,6 @@ module.exports = {
                 mimeType: 'audio/opus',
                 clockRate: 48000,
                 channels: 2,
-              },
-              {
-                kind: 'audio',
-                mimeType: 'audio/opus',
-                clockRate: 41100,
-                channels: 2,
-              },
-              {
-                kind: 'audio',
-                mimeType: 'audio/PCMA',
-                preferredPayloadType: 8,
-                clockRate: 8000,
                 rtcpFeedback: [{
                   type: 'transport-cc',
                 }],
@@ -48,6 +36,18 @@ module.exports = {
                 mimeType: 'audio/opus',
                 clockRate: 41100,
                 channels: 2,
+                rtcpFeedback: [{
+                  type: 'transport-cc',
+                }],
+              },
+              {
+                kind: 'audio',
+                mimeType: 'audio/PCMA',
+                preferredPayloadType: 8,
+                clockRate: 8000,
+                rtcpFeedback: [{
+                  type: 'transport-cc',
+                }],
               },
               {
                 kind: 'video',
