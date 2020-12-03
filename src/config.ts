@@ -33,9 +33,9 @@ module.exports = {
               },
               {
                 kind: 'audio',
-                mimeType: 'audio/opus',
-                clockRate: 41100,
-                channels: 2,
+                mimeType: 'audio/PCMU',
+                preferredPayloadType: 0,
+                clockRate: 8000,
                 rtcpFeedback: [{
                   type: 'transport-cc',
                 }],
