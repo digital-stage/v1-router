@@ -14,7 +14,7 @@ import { Router } from './model/model.server';
 import { RouterRequests } from './events';
 import RouterList from './RouterList';
 import ProducerAPI from './ProducerAPI';
-import { MEDIASOUP_CONFIG, CONNECTIONS_PER_CPU } from './env';
+import { MEDIASOUP_CONFIG, CONNECTIONS_PER_CPU, USE_DISTRIBUTION } from './env';
 
 const log = debug('router:mediasoup');
 const warn = log.extend('warn');
@@ -294,7 +294,7 @@ const createMediasoupSocket = async (
           return producerAPI.getProducer(payload.globalProducerId)
             .then(async (producer) => {
               if (producer) {
-                if (producer.routerId === router._id) {
+                if (!USE_DISTRIBUTION || producer.routerId === router._id) {
                   // This is the right router
                   if (localProducers[producer.routerProducerId]) {
                     const transport: WebRtcTransport = transports.webrtc[payload.transportId];
