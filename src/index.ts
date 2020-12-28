@@ -14,7 +14,7 @@ import ProducerAPI from './ProducerAPI';
 
 config();
 const {
-  ROUTER_DIST_URL, PORT, DOMAIN, ROOT_PATH, API_URL,
+  DISTRIBUTION_URL, PORT, DOMAIN, ROOT_PATH, API_URL, USE_DISTRIBUTION,
 } = process.env;
 
 const info = debug('router:info');
@@ -32,9 +32,9 @@ uws.get('/ping', (res) => {
   res
     .writeHeader('Content-Type', 'image/svg+xml')
     .end('<svg height="200" width="580" xmlns="http://www.w3.org/2000/svg">\n'
-      + '    <path d="m-1-1h582v402h-582z"/>\n'
-      + '    <path d="m223 148.453125h71v65h-71z" stroke="#000" stroke-width="1.5"/>\n'
-      + '</svg>');
+            + '    <path d="m-1-1h582v402h-582z"/>\n'
+            + '    <path d="m223 148.453125h71v65h-71z" stroke="#000" stroke-width="1.5"/>\n'
+            + '</svg>');
 });
 
 const routerList = new RouterList();
@@ -43,11 +43,15 @@ const routerList = new RouterList();
  * Collection initial informations about this router
  * and register with it by the router distribution service
  * @param token valid JWT
+ * @param initialRouter
  */
-const registerRouter = (token: string) => createInitialRouter()
-  .then((initialRouter) => new Promise<Router>((resolve) => {
+const registerRouter = (
+  token: string,
+  initialRouter: Partial<Router>,
+) => new Promise<Router>(
+  (resolve) => {
     // Now use token to establish connection to router distribution service
-    const socket = new TeckosClientWithJWT(ROUTER_DIST_URL, {}, token, {
+    const socket = new TeckosClientWithJWT(DISTRIBUTION_URL, {}, token, {
       router: initialRouter,
     });
 
@@ -84,7 +88,8 @@ const registerRouter = (token: string) => createInitialRouter()
 
     // Now connect
     socket.connect();
-  }));
+  },
+);
 
 /**
  * Start this router
@@ -99,17 +104,30 @@ const startRouter = (token: string, router: Router): Promise<ITeckosProvider> =>
 const port = PORT ? parseInt(PORT, 10) : 4010;
 
 info(`Using API at ${API_URL}`);
-info(`Using DISTRIBUTION SERVICE at ${ROUTER_DIST_URL}`);
+
+const start = async () => {
+  const initialRouter: Omit<Router, '_id' | 'userId'> = await createInitialRouter();
+  let router: Router;
+  const token = await getToken();
+  if (USE_DISTRIBUTION && USE_DISTRIBUTION === 'true') {
+    info(`Using DISTRIBUTION SERVICE at ${DISTRIBUTION_URL}`);
+    router = await registerRouter(token, initialRouter);
+  } else {
+    info('Not using DISTRIBUTION SERVICE');
+    router = {
+      ...initialRouter,
+      _id: 'standalone',
+      userId: '',
+    };
+  }
+  await startRouter(token, router);
+  await io.listen(parseInt(PORT, 10));
+  info(`Listening on ${DOMAIN}:${port}/${ROOT_PATH || ''}`);
+};
 
 // First get valid token
-getToken()
-  // Now register this router
-  .then((token) => registerRouter(token)
-    .then((router) => startRouter(token, router)))
-  .then(() => io.listen(parseInt(PORT, 10)))
-  .then(() => {
-    info(`Listening on ${DOMAIN}:${port}/${ROOT_PATH || ''}`);
-  })
+info('Starting service');
+start()
   .catch((initError) => {
     error(initError);
     process.exit();

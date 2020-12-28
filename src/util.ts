@@ -21,6 +21,7 @@ const {
   IP_V6,
   WS_PREFIX,
   REST_PREFIX,
+  ROOT_PATH,
 } = process.env;
 
 const logger = debug('router');
@@ -47,7 +48,7 @@ export function getToken(): Promise<string> {
     });
 }
 
-export async function createInitialRouter(): Promise<Partial<Router>> {
+export async function createInitialRouter(): Promise<Omit<Router, '_id' | 'userId'>> {
   const ipv4: string = IP_V4 || await publicIp.v4()
     .catch((error) => {
       warn('Could not obtain IPv4 address:');
@@ -66,11 +67,12 @@ export async function createInitialRouter(): Promise<Partial<Router>> {
   }
   const cpuCount: number = os.cpus().length;
 
-  const initial: Partial<Router> = {
+  const initial: Omit<Router, '_id' | 'userId'> = {
     wsPrefix: WS_PREFIX || 'wss',
     restPrefix: REST_PREFIX || 'https',
     url: DOMAIN,
     port: parseInt(PUBLIC_PORT, 10),
+    path: ROOT_PATH,
     ipv4,
     ipv6,
     availableSlots: cpuCount * parseInt(CONNECTIONS_PER_CPU, 10),
