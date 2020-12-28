@@ -2,10 +2,7 @@ import fetch from 'node-fetch';
 import debug from 'debug';
 import { GlobalAudioProducerId, GlobalProducer, GlobalVideoProducerId } from './model/model.server';
 import { getToken } from './util';
-
-const {
-  API_URL,
-} = process.env;
+import { API_URL } from './env';
 
 const log = debug('router:producerapi');
 const warn = log.extend('warn');

@@ -1,28 +1,24 @@
 import fetch from 'node-fetch';
 import * as publicIp from 'public-ip';
 import os from 'os';
-import { config } from 'dotenv';
 import debug from 'debug';
 import {
   Router,
 } from './model/model.server';
-
-config();
-
-const {
+import {
   AUTH_URL,
-  USE_IPV6,
-  DOMAIN,
-  PUBLIC_PORT,
   CONNECTIONS_PER_CPU,
+  DOMAIN,
   EMAIL,
-  PASSWORD,
   IP_V4,
   IP_V6,
-  WS_PREFIX,
+  PASSWORD,
+  PUBLIC_PORT,
   REST_PREFIX,
   ROOT_PATH,
-} = process.env;
+  USE_IPV6,
+  WS_PREFIX,
+} from './env';
 
 const logger = debug('router');
 const info = logger.extend('info');

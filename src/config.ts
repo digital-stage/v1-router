@@ -1,8 +1,10 @@
+import { LISTEN_IP, RTC_MAX_PORT, RTC_MIN_PORT } from './env';
+
 module.exports = {
   // Worker settings
   worker: {
-    rtcMinPort: process.env.RTC_MIN_PORT || 40000,
-    rtcMaxPort: process.env.RTC_MAX_PORT || 49999,
+    rtcMinPort: RTC_MIN_PORT || 40000,
+    rtcMaxPort: RTC_MAX_PORT || 49999,
     logLevel: 'warn',
     logTags: [
       'info',
@@ -98,7 +100,7 @@ module.exports = {
   webRtcTransport: {
     listenIps: [
       {
-        ip: process.env.LISTEN_IP || '127.0.0.1',
+        ip: LISTEN_IP || '127.0.0.1',
         announcedIp: null,
       },
     ],

@@ -10,22 +10,16 @@ import debug from 'debug';
 import { RtpCapabilities } from 'mediasoup/src/RtpParameters';
 import { RtpParameters } from 'mediasoup/lib/RtpParameters';
 import ITeckosProvider from 'teckos/lib/types/ITeckosProvider';
-import { config } from 'dotenv';
 import { Router } from './model/model.server';
 import { RouterRequests } from './events';
 import RouterList from './RouterList';
 import ProducerAPI from './ProducerAPI';
-
-config();
-
-const { CONNECTIONS_PER_CPU } = process.env;
+import { MEDIASOUP_CONFIG, CONNECTIONS_PER_CPU } from './env';
 
 const log = debug('router:mediasoup');
 const warn = log.extend('warn');
 const error = log.extend('error');
 const trace = log.extend('trace');
-
-const mediasoupConfig = require('./config');
 
 const connectionsPerCpu: number = parseInt(CONNECTIONS_PER_CPU, 10);
 
@@ -58,15 +52,15 @@ let localConsumers: {
 
 const init = async () => {
   const cpuCount: number = os.cpus().length;
-  const { mediaCodecs } = mediasoupConfig.router;
+  const { mediaCodecs } = MEDIASOUP_CONFIG.router;
 
   const results: Promise<MediasoupRouter>[] = [];
   for (let i = 0; i < cpuCount; i += 1) {
     results.push(mediasoup.createWorker({
-      logLevel: mediasoupConfig.worker.logLevel,
-      logTags: mediasoupConfig.worker.logTags,
-      rtcMinPort: mediasoupConfig.worker.rtcMinPort,
-      rtcMaxPort: mediasoupConfig.worker.rtcMaxPort,
+      logLevel: MEDIASOUP_CONFIG.worker.logLevel,
+      logTags: MEDIASOUP_CONFIG.worker.logTags,
+      rtcMinPort: MEDIASOUP_CONFIG.worker.rtcMinPort,
+      rtcMaxPort: MEDIASOUP_CONFIG.worker.rtcMaxPort,
     })
       .then((worker) => worker.createRouter({ mediaCodecs })));
   }
@@ -133,12 +127,12 @@ const createMediasoupSocket = async (
             }
             return createdRouter.createWebRtcTransport({
               preferTcp: false,
-              listenIps: mediasoupConfig.webRtcTransport.listenIps,
+              listenIps: MEDIASOUP_CONFIG.webRtcTransport.listenIps,
               enableUdp: true,
               enableTcp: true,
               preferUdp: true,
               initialAvailableOutgoingBitrate:
-              mediasoupConfig.webRtcTransport.initialAvailableOutgoingBitrate,
+              MEDIASOUP_CONFIG.webRtcTransport.initialAvailableOutgoingBitrate,
             }).then((transport: WebRtcTransport) => {
               transports.webrtc[transport.id] = transport;
               transportIds[transport.id] = true;

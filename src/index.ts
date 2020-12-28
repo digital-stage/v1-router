@@ -1,7 +1,6 @@
 import { TeckosClientWithJWT } from 'teckos-client';
 import { UWSProvider } from 'teckos';
 import * as uWS from 'teckos/uws';
-import { config } from 'dotenv';
 import ITeckosProvider from 'teckos/lib/types/ITeckosProvider';
 import debug from 'debug';
 import { Router, RouterId } from './model/model.server';
@@ -11,11 +10,9 @@ import {
 import createMediasoupSocket from './mediasoup';
 import RouterList from './RouterList';
 import ProducerAPI from './ProducerAPI';
-
-config();
-const {
-  DISTRIBUTION_URL, PORT, DOMAIN, ROOT_PATH, API_URL, USE_DISTRIBUTION,
-} = process.env;
+import {
+  API_URL, DISTRIBUTION_URL, DOMAIN, PORT, ROOT_PATH, USE_DISTRIBUTION,
+} from './env';
 
 const info = debug('router:info');
 const warn = debug('router:warn');
@@ -101,7 +98,7 @@ const startRouter = (token: string, router: Router): Promise<ITeckosProvider> =>
   return createMediasoupSocket(io, router, routerList, producerAPI);
 };
 
-const port = PORT ? parseInt(PORT, 10) : 4010;
+const port = PORT ? parseInt(PORT, 10) : 3000;
 
 info(`Using API at ${API_URL}`);
 
@@ -109,7 +106,7 @@ const start = async () => {
   const initialRouter: Omit<Router, '_id' | 'userId'> = await createInitialRouter();
   let router: Router;
   const token = await getToken();
-  if (USE_DISTRIBUTION && USE_DISTRIBUTION === 'true') {
+  if (USE_DISTRIBUTION) {
     info(`Using DISTRIBUTION SERVICE at ${DISTRIBUTION_URL}`);
     router = await registerRouter(token, initialRouter);
   } else {
