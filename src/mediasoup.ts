@@ -61,7 +61,6 @@ let localConsumers: {
 
 const init = async (config: MediasoupConfiguration) => {
   const cpuCount: number = os.cpus().length;
-  const { mediaCodecs } = config.router;
 
   const results: Promise<MediasoupRouter>[] = [];
   for (let i = 0; i < cpuCount; i += 1) {
@@ -71,7 +70,7 @@ const init = async (config: MediasoupConfiguration) => {
       rtcMinPort: config.worker.rtcMinPort,
       rtcMaxPort: config.worker.rtcMaxPort,
     })
-      .then((worker) => worker.createRouter({ mediaCodecs })));
+      .then((worker) => worker.createRouter(config.router)));
   }
   return Promise.all(results)
     .then((routers) => {

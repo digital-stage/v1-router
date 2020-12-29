@@ -110,5 +110,4 @@ const config: MediasoupConfiguration = {
     maxSctpMessageSize: 262144,
   },
 };
-
 export default config;

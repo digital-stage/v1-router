@@ -27,7 +27,7 @@ const {
 const USE_DISTRIBUTION = process.env.USE_DISTRIBUTION && process.env.USE_DISTRIBUTION === 'true';
 const USE_IPV6 = process.env.USE_IPV6 && process.env.USE_IPV6 === 'true';
 
-const MEDIASOUP_CONFIG = require('./config');
+const MEDIASOUP_CONFIG = require('./config').default;
 
 export {
   PORT,

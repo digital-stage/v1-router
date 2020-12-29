@@ -97,8 +97,7 @@ const registerRouter = (
 const startRouter = (token: string, router: Router): Promise<ITeckosProvider> => {
   const producerAPI = new ProducerAPI(token);
   const config: MediasoupConfiguration = {
-    ...MEDIASOUP_CONFIG.router,
-    ...MEDIASOUP_CONFIG.worker,
+    ...MEDIASOUP_CONFIG,
     webRtcTransport: {
       ...MEDIASOUP_CONFIG.webRtcTransport,
       listenIps: [
@@ -108,8 +107,8 @@ const startRouter = (token: string, router: Router): Promise<ITeckosProvider> =>
         },
       ],
     },
-
   };
+  console.log(config);
   return createMediasoupSocket(io, router, routerList, producerAPI, config);
 };
 
