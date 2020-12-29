@@ -14,7 +14,7 @@ import { Router } from './model/model.server';
 import { RouterRequests } from './events';
 import RouterList from './RouterList';
 import ProducerAPI from './ProducerAPI';
-import { MEDIASOUP_CONFIG, CONNECTIONS_PER_CPU, USE_DISTRIBUTION } from './env';
+import { CONNECTIONS_PER_CPU, USE_DISTRIBUTION } from './env';
 
 const log = debug('router:mediasoup');
 const warn = log.extend('warn');
@@ -22,6 +22,15 @@ const error = log.extend('error');
 const trace = log.extend('trace');
 
 const connectionsPerCpu: number = parseInt(CONNECTIONS_PER_CPU, 10);
+
+export interface MediasoupConfiguration {
+  worker: mediasoup.types.WorkerSettings,
+  router: mediasoup.types.RouterOptions,
+  webRtcTransport: mediasoup.types.WebRtcTransportOptions & {
+    maxIncomingBitrate?: number,
+    minimumAvailableOutgoingBitrate?: number
+  }
+}
 
 let initialized: boolean = false;
 
@@ -50,17 +59,17 @@ let localConsumers: {
   [id: string]: Consumer
 } = {};
 
-const init = async () => {
+const init = async (config: MediasoupConfiguration) => {
   const cpuCount: number = os.cpus().length;
-  const { mediaCodecs } = MEDIASOUP_CONFIG.router;
+  const { mediaCodecs } = config.router;
 
   const results: Promise<MediasoupRouter>[] = [];
   for (let i = 0; i < cpuCount; i += 1) {
     results.push(mediasoup.createWorker({
-      logLevel: MEDIASOUP_CONFIG.worker.logLevel,
-      logTags: MEDIASOUP_CONFIG.worker.logTags,
-      rtcMinPort: MEDIASOUP_CONFIG.worker.rtcMinPort,
-      rtcMaxPort: MEDIASOUP_CONFIG.worker.rtcMaxPort,
+      logLevel: config.worker.logLevel,
+      logTags: config.worker.logTags,
+      rtcMinPort: config.worker.rtcMinPort,
+      rtcMaxPort: config.worker.rtcMaxPort,
     })
       .then((worker) => worker.createRouter({ mediaCodecs })));
   }
@@ -88,7 +97,8 @@ const createMediasoupSocket = async (
   router: Router,
   routerList: RouterList,
   producerAPI: ProducerAPI,
-): Promise<ITeckosProvider> => init()
+  config: MediasoupConfiguration,
+): Promise<ITeckosProvider> => init(config)
   .then(() => {
     io.onConnection((socket) => {
       trace(`New client connection: ${socket.id}`);
@@ -127,12 +137,12 @@ const createMediasoupSocket = async (
             }
             return createdRouter.createWebRtcTransport({
               preferTcp: false,
-              listenIps: MEDIASOUP_CONFIG.webRtcTransport.listenIps,
+              listenIps: config.webRtcTransport.listenIps,
               enableUdp: true,
               enableTcp: true,
               preferUdp: true,
               initialAvailableOutgoingBitrate:
-              MEDIASOUP_CONFIG.webRtcTransport.initialAvailableOutgoingBitrate,
+                            config.webRtcTransport.initialAvailableOutgoingBitrate,
             }).then((transport: WebRtcTransport) => {
               transports.webrtc[transport.id] = transport;
               transportIds[transport.id] = true;

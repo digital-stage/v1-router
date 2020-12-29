@@ -1,10 +1,13 @@
-import { LISTEN_IP, RTC_MAX_PORT, RTC_MIN_PORT } from './env';
+import {
+  RTC_MAX_PORT, RTC_MIN_PORT,
+} from './env';
+import { MediasoupConfiguration } from './mediasoup';
 
-module.exports = {
+const config: MediasoupConfiguration = {
   // Worker settings
   worker: {
-    rtcMinPort: RTC_MIN_PORT || 40000,
-    rtcMaxPort: RTC_MAX_PORT || 49999,
+    rtcMinPort: RTC_MIN_PORT ? parseInt(RTC_MIN_PORT, 10) : 40000,
+    rtcMaxPort: RTC_MIN_PORT ? parseInt(RTC_MAX_PORT, 10) : 49999,
     logLevel: 'warn',
     logTags: [
       'info',
@@ -99,10 +102,7 @@ module.exports = {
   // WebRtcTransport settings
   webRtcTransport: {
     listenIps: [
-      {
-        ip: LISTEN_IP || '127.0.0.1',
-        announcedIp: null,
-      },
+      // Will be set later
     ],
     maxIncomingBitrate: 1500000,
     initialAvailableOutgoingBitrate: 1000000,
@@ -110,3 +110,5 @@ module.exports = {
     maxSctpMessageSize: 262144,
   },
 };
+
+export default config;

@@ -20,6 +20,7 @@ const {
   RTC_MIN_PORT,
   RTC_MAX_PORT,
   LISTEN_IP,
+  ANNOUNCED_IP,
 
 } = process.env;
 
@@ -49,4 +50,5 @@ export {
   RTC_MIN_PORT,
   RTC_MAX_PORT,
   LISTEN_IP,
+  ANNOUNCED_IP,
 };

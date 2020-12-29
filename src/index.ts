@@ -7,11 +7,12 @@ import { Router, RouterId } from './model/model.server';
 import {
   createInitialRouter, getToken,
 } from './util';
-import createMediasoupSocket from './mediasoup';
+import createMediasoupSocket, { MediasoupConfiguration } from './mediasoup';
 import RouterList from './RouterList';
 import ProducerAPI from './ProducerAPI';
 import {
-  API_URL, DISTRIBUTION_URL, DOMAIN, PORT, ROOT_PATH, USE_DISTRIBUTION,
+  ANNOUNCED_IP,
+  API_URL, DISTRIBUTION_URL, DOMAIN, LISTEN_IP, MEDIASOUP_CONFIG, PORT, ROOT_PATH, USE_DISTRIBUTION,
 } from './env';
 
 const info = debug('router:info');
@@ -95,7 +96,21 @@ const registerRouter = (
  */
 const startRouter = (token: string, router: Router): Promise<ITeckosProvider> => {
   const producerAPI = new ProducerAPI(token);
-  return createMediasoupSocket(io, router, routerList, producerAPI);
+  const config: MediasoupConfiguration = {
+    ...MEDIASOUP_CONFIG.router,
+    ...MEDIASOUP_CONFIG.worker,
+    webRtcTransport: {
+      ...MEDIASOUP_CONFIG.webRtcTransport,
+      listenIps: [
+        {
+          ip: LISTEN_IP || '0.0.0.0',
+          announcedIp: ANNOUNCED_IP || router.ipv4,
+        },
+      ],
+    },
+
+  };
+  return createMediasoupSocket(io, router, routerList, producerAPI, config);
 };
 
 const port = PORT ? parseInt(PORT, 10) : 3000;
